@@ -1,0 +1,264 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #0A0C0F;
+  --color-canvas-subtle: #101318;
+  --color-surface: #141820;
+  --color-surface-hover: #1B202B;
+  
+  --color-cashmere: #10B981;
+  --color-cashmere-light: #34D399;
+  --color-cashmere-dark: #059669;
+  --color-cashmere-subtle: #0F241D;
+  
+  --color-espresso: #F3F4F6;
+  --color-espresso-soft: #D1D5DB;
+  --color-mocha: #9CA3AF;
+  --color-taupe: #6B7280;
+  --color-linen: #252A36;
+  --color-border-subtle: #252A36;
+  
+  --color-sage: #10B981;
+  --color-sage-subtle: #0F241D;
+  
+  --color-blush: #F59E0B;
+  --color-blush-subtle: #271E12;
+
+  --font-serif: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-canvas);
+    background-image: 
+      radial-gradient(rgba(16, 185, 129, 0.07) 1px, transparent 1px),
+      radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: 0 0, 14px 14px;
+    color: var(--color-espresso);
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, .font-editorial, .font-serif {
+    font-family: var(--font-serif);
+    letter-spacing: -0.03em;
+  }
+}
+
+/* Marquee Ticker Urbano (Streetwear Drop Banner) */
+@keyframes kutz-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.kutz-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: kutz-marquee 28s linear infinite;
+}
+
+.kutz-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* Tarjetas Neo-Streetwear & Industrial Barber Studio con Cristal Nítido (Poco Difuminado) */
+.luxury-card {
+  background: rgba(16, 19, 24, 0.68);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(38, 44, 58, 0.85);
+  border-radius: 1rem;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.luxury-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 4px 4px 0px rgba(16, 185, 129, 0.2), 0 16px 36px -8px rgba(0, 0, 0, 0.75);
+}
+
+.glass-panel {
+  background: rgba(16, 19, 24, 0.68);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(38, 44, 58, 0.85);
+  border-radius: 1rem;
+}
+
+.luxury-card-inset {
+  background: linear-gradient(180deg, #141820 0%, #0E1117 100%);
+  border: 1px solid #262C3A;
+  border-radius: 0.875rem;
+}
+
+/* Tarjeta Estilo Backstage VIP Pass (Bonos) */
+.vip-pass-card {
+  background: linear-gradient(135deg, #161B24 0%, #10141B 100%);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-left: 4px solid #10B981;
+  border-radius: 0.875rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Botón Principal - Acid Volt / Emerald Streetwear con Snap Táctil */
+.btn-author {
+  background-color: #10B981;
+  color: #07090C;
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.75rem 1.35rem;
+  border-radius: 0.75rem;
+  border: 1px solid #34D399;
+  box-shadow: 3px 3px 0px #065F46, 0 6px 20px rgba(16, 185, 129, 0.25);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-author:hover {
+  background-color: #34D399;
+  color: #050709;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #10B981, 0 10px 25px rgba(16, 185, 129, 0.4);
+}
+
+.btn-author:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px #065F46;
+}
+
+/* Botón Secundario Matte Graphite */
+.btn-author-secondary {
+  background-color: #191E28;
+  color: #34D399;
+  border: 1px solid #2A3140;
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.7rem 1.25rem;
+  border-radius: 0.75rem;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-author-secondary:hover {
+  background-color: #212734;
+  color: #10B981;
+  border-color: #10B981;
+  box-shadow: 3px 3px 0px rgba(16, 185, 129, 0.25);
+}
+
+/* Badges Urbanos */
+.badge-sage {
+  background-color: rgba(16, 185, 129, 0.14);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.badge-blush {
+  background-color: rgba(245, 158, 11, 0.14);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.badge-cashmere {
+  background-color: #1B202B;
+  color: #E5E7EB;
+  border: 1px solid #2D3546;
+}
+
+/* Ocultar scrollbar manteniendo funcionalidad */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Transición suave global */
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* GPU Hardware-Accelerated 3D Transform Utilities (60 FPS) */
+.perspective-1000 {
+  perspective: 1000px;
+  -webkit-perspective: 1000px;
+}
+
+.perspective-1200 {
+  perspective: 1200px;
+  -webkit-perspective: 1200px;
+}
+
+.transform-style-3d,
+.preserve-3d {
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+  -webkit-transform: rotateY(180deg);
+}
+
+.rotate-y-0 {
+  transform: rotateY(0deg);
+  -webkit-transform: rotateY(0deg);
+}
+
+.flip-transition {
+  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+  will-change: transform;
+}
+
+.gpu-accelerated {
+  will-change: transform;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Media Print Rules for Printable QR Poster Generator */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
+

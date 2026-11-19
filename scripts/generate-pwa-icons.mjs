@@ -1,0 +1,125 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const publicDir = path.resolve(__dirname, '../public');
+
+// Vector SVG motif for KUTZ // BARBER OS (Obsidian + Emerald + Scissors)
+function getKutzSvg(size = 512) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${size}" height="${size}">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141820"/>
+      <stop offset="100%" stop-color="#0A0C0F"/>
+    </linearGradient>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.7"/>
+    </filter>
+  </defs>
+
+  <!-- Base Obsidian Canvas -->
+  <rect width="512" height="512" rx="100" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Radial Glow in Center -->
+  <circle cx="256" cy="240" r="210" fill="url(#glowGrad)"/>
+
+  <!-- Geometric Tech / Grid Accents -->
+  <rect x="36" y="36" width="440" height="440" rx="76" fill="none" stroke="#252A36" stroke-width="2" stroke-dasharray="8 8"/>
+  <rect x="48" y="48" width="416" height="416" rx="66" fill="none" stroke="#10B981" stroke-width="1.5" stroke-opacity="0.35"/>
+
+  <!-- Corner Streetwear Crosshairs -->
+  <path d="M 64 80 L 64 64 L 80 64" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 448 80 L 448 64 L 432 64" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 64 432 L 64 448 L 80 448" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 448 432 L 448 448 L 432 448" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Center Badge (App Icon Card) -->
+  <g filter="url(#subtleShadow)">
+    <rect x="116" y="96" width="280" height="280" rx="48" fill="#101318" stroke="#252A36" stroke-width="3"/>
+    
+    <!-- Emerald Accent Block Behind Scissors -->
+    <rect x="144" y="124" width="224" height="224" rx="36" fill="url(#emeraldGrad)"/>
+    
+    <!-- Lucide Scissors Scaled & Centered (original 24x24 viewBox scaled ~6.5x) -->
+    <g transform="translate(178, 158) scale(6.5)" stroke="#07090C" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="6" cy="6" r="3"/>
+      <path d="M8.12 8.12 12 12"/>
+      <path d="M20 4 8.12 15.88"/>
+      <circle cx="6" cy="18" r="3"/>
+      <path d="M14.8 14.8 20 20"/>
+    </g>
+  </g>
+
+  <!-- Typography: KUTZ // OS Streetwear Branding -->
+  <g font-family="system-ui, -apple-system, sans-serif" font-weight="900" text-anchor="middle">
+    <text x="256" y="425" fill="#F3F4F6" font-size="34" letter-spacing="4">KUTZ <tspan fill="#10B981" font-family="monospace">// OS</tspan></text>
+    <text x="256" y="450" fill="#9CA3AF" font-size="11" font-family="monospace" letter-spacing="3" opacity="0.8">FADE • RAZOR • URBAN</text>
+  </g>
+</svg>`;
+}
+
+async function generate() {
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  // 1. Write public/favicon.svg
+  const svg512 = getKutzSvg(512);
+  fs.writeFileSync(path.join(publicDir, 'favicon.svg'), svg512, 'utf8');
+  console.log('✓ Written public/favicon.svg');
+
+  // 2. Launch Puppeteer and render PNG targets
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  try {
+    const page = await browser.newPage();
+    const targets = [
+      { filename: 'pwa-192x192.png', size: 192 },
+      { filename: 'pwa-512x512.png', size: 512 },
+      { filename: 'apple-touch-icon.png', size: 180 }
+    ];
+
+    for (const { filename, size } of targets) {
+      await page.setViewport({ width: size, height: size, deviceScaleFactor: 1 });
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: ${size}px; height: ${size}px; overflow: hidden; background: transparent; }
+    svg { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  ${svg512}
+</body>
+</html>`;
+      await page.setContent(html, { waitUntil: 'load' });
+      const outPath = path.join(publicDir, filename);
+      await page.screenshot({ path: outPath, type: 'png', omitBackground: false });
+      const stat = fs.statSync(outPath);
+      console.log(`✓ Generated public/${filename} (${size}x${size}, ${stat.size} bytes)`);
+    }
+  } finally {
+    await browser.close();
+  }
+}
+
+generate().catch(err => {
+  console.error('Icon generation failed:', err);
+  process.exit(1);
+});
