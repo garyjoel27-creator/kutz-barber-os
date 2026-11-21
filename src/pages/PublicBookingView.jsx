@@ -22,6 +22,8 @@ import {
   buildWhatsAppUrl,
   normalizeShopSlug,
   getShopLocalDateTime,
+  getShopVertical,
+  isFemaleVertical,
 } from '../lib/shopUtils';
 import { BarberPinLockModal } from '../components/QRPosterModal';
 import { soundFx } from '../lib/soundFx';
@@ -34,6 +36,24 @@ const STYLE_PILLS = [
   'Corte Clásico + Barba',
 ];
 
+const NAILS_STYLE_PILLS = [
+  'Lo mismo de siempre',
+  'Almendra Natural / Nude',
+  'Francesa / Baby Boomer',
+  'Acrílicas Talla S/M',
+  'Color Liso + Brillo Glazed',
+  'Pedicura Spa Relajante',
+];
+
+const SALON_ESTETICA_STYLE_PILLS = [
+  'Lo mismo de siempre',
+  'Retoque de Raíz / Canas',
+  'Balayage / Iluminación Suave',
+  'Hidratación / Brillo Espejo',
+  'Piel Luminosa / Efecto Lifting',
+  'Cejas & Pestañas Naturales',
+];
+
 const SERVICE_CATEGORIES = [
   { id: 'all', label: 'Todos' },
   { id: 'corte', label: '✂️ Cortes' },
@@ -41,8 +61,56 @@ const SERVICE_CATEGORIES = [
   { id: 'color', label: '🎨 Color & Facial' },
 ];
 
-function classifyServiceCategory(service) {
+const NAILS_SERVICE_CATEGORIES = [
+  { id: 'all', label: 'Todos' },
+  { id: 'acrilicas', label: '💅 Acrílicas' },
+  { id: 'manicura', label: '✨ Manicura' },
+  { id: 'pedicura', label: '🦶 Pedicura & Spa' },
+  { id: 'facial', label: '🌸 Facial & Retiros' },
+];
+
+const SALON_ESTETICA_SERVICE_CATEGORIES = [
+  { id: 'all', label: 'Todos' },
+  { id: 'peluqueria', label: '💇‍♀️ Peluquería & Color' },
+  { id: 'facial', label: '💆‍♀️ Estética Facial' },
+  { id: 'corporal', label: '🌿 Corporal & Mirada' },
+];
+
+function classifyServiceCategory(service, vertical = 'barber') {
+  const cat = String(service?.category || '').toLowerCase();
   const name = String(service?.name || '').toLowerCase();
+
+  if (vertical === 'nails') {
+    if (cat === 'acrilicas' || name.includes('acrilic') || name.includes('acrílic')) return 'acrilicas';
+    if (cat === 'manicura' || name.includes('manicura')) return 'manicura';
+    if (cat === 'pedicura' || name.includes('pedicura')) return 'pedicura';
+    return 'facial';
+  }
+
+  if (vertical === 'peluqueria') {
+    if (
+      cat === 'peluqueria' ||
+      name.includes('corte') ||
+      name.includes('brushing') ||
+      name.includes('color') ||
+      name.includes('tinte') ||
+      name.includes('balayage') ||
+      name.includes('keratina') ||
+      name.includes('botox')
+    ) {
+      return 'peluqueria';
+    }
+    if (
+      cat === 'facial' ||
+      name.includes('facial') ||
+      name.includes('radiofrecuencia') ||
+      name.includes('peeling')
+    ) {
+      return 'facial';
+    }
+    return 'corporal';
+  }
+
   if (
     name.includes('tinte') ||
     name.includes('mecha') ||
@@ -169,6 +237,20 @@ export default function PublicBookingView() {
   const [publicShop, setPublicShop] = useState(null);
   const [remotePaused, setRemotePaused] = useState(false);
   const effectiveShop = publicShop || activeShop;
+  const activeVertical = getShopVertical(effectiveShop, routeSlug || activeShopSlug);
+  const isFemale = isFemaleVertical(activeVertical);
+  const activeStylePills =
+    activeVertical === 'nails'
+      ? NAILS_STYLE_PILLS
+      : activeVertical === 'peluqueria'
+      ? SALON_ESTETICA_STYLE_PILLS
+      : STYLE_PILLS;
+  const activeServiceCategories =
+    activeVertical === 'nails'
+      ? NAILS_SERVICE_CATEGORIES
+      : activeVertical === 'peluqueria'
+      ? SALON_ESTETICA_SERVICE_CATEGORIES
+      : SERVICE_CATEGORIES;
   const isPaused =
     remotePaused ||
     contextPaused ||
@@ -281,8 +363,8 @@ export default function PublicBookingView() {
   // Filtered services for easy mobile browsing without nested scroll traps
   const filteredServices = useMemo(() => {
     if (serviceCategory === 'all') return services;
-    return services.filter((s) => classifyServiceCategory(s) === serviceCategory);
-  }, [services, serviceCategory]);
+    return services.filter((s) => classifyServiceCategory(s, activeVertical) === serviceCategory);
+  }, [services, serviceCategory, activeVertical]);
 
   // Cargar disponibilidad pública real desde Netlify Blobs (/public-state)
   useEffect(() => {
@@ -675,19 +757,35 @@ export default function PublicBookingView() {
   };
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-[#0A0C0F] text-[#F3F4F6] flex flex-col justify-between selection:bg-[#10B981] selection:text-[#07090C]">
-      {/* Background Ambience con Foto Real de Barbería Nítida */}
+    <div
+      className={`min-h-screen min-h-[100dvh] bg-[#0A0C0F] text-[#F3F4F6] flex flex-col justify-between ${
+        isFemale
+          ? 'theme-rose-luxury selection:bg-[#EC4899] selection:text-white'
+          : 'selection:bg-[#10B981] selection:text-[#07090C]'
+      }`}
+    >
+      {/* Background Ambience con Foto Real Nítida (Barbería, Nail Bar o Salón de Peluquería & Estética) */}
       <div
         className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none"
         aria-hidden="true"
       >
         <img
-          src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=85&w=1920"
+          src={
+            activeVertical === 'nails'
+              ? 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=85&w=1920'
+              : activeVertical === 'peluqueria'
+              ? 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=85&w=1920'
+              : 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=85&w=1920'
+          }
           alt=""
           className="w-full h-full object-cover object-center opacity-65 filter saturate-105 contrast-105"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0A0C0F]/55 via-[#0A0C0F]/40 to-[#0A0C0F]/70" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-72 bg-[#10B981]/12 blur-[100px] rounded-full" />
+        <div
+          className={`absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-72 ${
+            isFemale ? 'bg-[#EC4899]/18' : 'bg-[#10B981]/12'
+          } blur-[100px] rounded-full`}
+        />
       </div>
 
       {/* Main Container */}
@@ -695,10 +793,26 @@ export default function PublicBookingView() {
         <div>
           {/* Shop Header */}
           <div className="text-center pt-3 pb-5 border-b border-[#252A36]">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-[#10B981] text-[#07090C] flex items-center justify-center shadow-[0_4px_20px_rgba(16,185,129,0.35)] mb-3">
-              <Scissors size={28} strokeWidth={2.5} />
+            <div
+              className={`w-14 h-14 mx-auto rounded-2xl ${
+                isFemale
+                  ? 'bg-[#EC4899] text-white shadow-[0_4px_20px_rgba(236,72,153,0.4)]'
+                  : 'bg-[#10B981] text-[#07090C] shadow-[0_4px_20px_rgba(16,185,129,0.35)]'
+              } flex items-center justify-center mb-3`}
+            >
+              {isFemale ? (
+                <Sparkles size={28} strokeWidth={2.5} />
+              ) : (
+                <Scissors size={28} strokeWidth={2.5} />
+              )}
             </div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#10B981]/15 border border-[#10B981]/30 text-[#34D399] text-[10px] font-bold uppercase mb-1.5">
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full ${
+                isFemale
+                  ? 'bg-[#EC4899]/15 border border-[#EC4899]/35 text-[#F9A8D4]'
+                  : 'bg-[#10B981]/15 border border-[#10B981]/30 text-[#34D399]'
+              } text-[10px] font-bold uppercase mb-1.5`}
+            >
               <Sparkles size={11} />
               <span>Reserva Directa QR · Cero Esperas</span>
             </div>
@@ -706,12 +820,24 @@ export default function PublicBookingView() {
               {shopName}
             </h1>
             {effectiveShop?.subtitle && (
-              <p className="text-xs font-extrabold text-[#34D399] mt-1 tracking-wide">
-                ✂️ {effectiveShop.subtitle}
+              <p
+                className={`text-xs font-extrabold ${
+                  isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'
+                } mt-1 tracking-wide`}
+              >
+                {activeVertical === 'nails'
+                  ? '💅 '
+                  : activeVertical === 'peluqueria'
+                  ? '💇‍♀️ '
+                  : '✂️ '}
+                {effectiveShop.subtitle}
               </p>
             )}
             <p className="text-xs text-[#9CA3AF] mt-2 flex items-center justify-center gap-1.5">
-              <MapPin size={13} className="text-[#10B981] shrink-0" />
+              <MapPin
+                size={13}
+                className={`${isFemale ? 'text-[#EC4899]' : 'text-[#10B981]'} shrink-0`}
+              />
               <span>{shopAddress}</span>
             </p>
 
@@ -963,7 +1089,7 @@ export default function PublicBookingView() {
 
                     {services.length > 4 && (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                        {SERVICE_CATEGORIES.map((cat) => {
+                        {activeServiceCategories.map((cat) => {
                           const active = serviceCategory === cat.id;
                           return (
                             <button
@@ -975,7 +1101,9 @@ export default function PublicBookingView() {
                               }}
                               className={`py-2 px-2.5 min-h-[40px] rounded-lg text-xs font-bold border transition-all cursor-pointer ${
                                 active
-                                  ? 'bg-[#10B981] text-[#07090C] border-[#34D399]'
+                                  ? isFemale
+                                    ? 'bg-[#EC4899] text-white border-[#F472B6]'
+                                    : 'bg-[#10B981] text-[#07090C] border-[#34D399]'
                                   : 'bg-[#101318] text-[#D1D5DB] border-[#252A36]'
                               }`}
                             >
@@ -1238,10 +1366,14 @@ export default function PublicBookingView() {
                     {/* Estilo orientativo */}
                     <div className="pt-1">
                       <span className="text-xs font-bold text-[#9CA3AF] block mb-1.5">
-                        ¿Qué estilo buscas hoy?
+                        {activeVertical === 'nails'
+                          ? '¿Qué diseño o estilo te apetece hoy?'
+                          : activeVertical === 'peluqueria'
+                          ? '¿Qué servicio o resultado buscas hoy?'
+                          : '¿Qué estilo buscas hoy?'}
                       </span>
                       <div className="flex flex-wrap gap-1.5">
-                        {STYLE_PILLS.map((st) => (
+                        {activeStylePills.map((st) => (
                           <button
                             key={st}
                             type="button"
@@ -1251,7 +1383,9 @@ export default function PublicBookingView() {
                             }}
                             className={`px-3 py-2 min-h-[40px] rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                               selectedStyle === st
-                                ? 'bg-[#10B981] text-[#07090C] border-[#34D399]'
+                                ? isFemale
+                                  ? 'bg-[#EC4899] text-white border-[#F472B6]'
+                                  : 'bg-[#10B981] text-[#07090C] border-[#34D399]'
                                 : 'bg-[#101318] text-[#D1D5DB] border-[#252A36]'
                             }`}
                           >

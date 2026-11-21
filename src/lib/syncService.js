@@ -11,7 +11,14 @@
  */
 
 import { safeGetItem, safeSetItem, STORAGE_KEYS } from './storage.js';
-import { DEFAULT_SHOP_CONFIG, SHOP_REX_CONFIG, SHOP_JOSEH_CONFIG, normalizeShopSlug } from './shopUtils.js';
+import {
+  DEFAULT_SHOP_CONFIG,
+  SHOP_REX_CONFIG,
+  SHOP_JOSEH_CONFIG,
+  SHOP_CAMPODONICO_NAILS_CONFIG,
+  SHOP_SALON_ESTETICA_CONFIG,
+  normalizeShopSlug
+} from './shopUtils.js';
 
 // Configuration Constants
 export const SYNC_INTERVAL_MS = 5000;
@@ -208,9 +215,29 @@ export function loadLocalShopState(shopSlug = DEFAULT_SHOP_SLUG, customStorage =
 
   // 1. Config
   let config = safeGetItem(keys.CONFIG, null, storage);
-  if (!config || (shopSlug === 'joseh-barber' && Number(config.configVersion || 1) < 2)) {
+  if (
+    !config ||
+    ((shopSlug === 'joseh-barber' ||
+      shopSlug === 'campodonico-nails' ||
+      shopSlug === 'campodonico-unas' ||
+      shopSlug === 'peluqueria-estetica' ||
+      shopSlug === 'salon-estetica') &&
+      Number(config.configVersion || 1) < 2)
+  ) {
     if (shopSlug === 'joseh-barber') {
       config = { ...SHOP_JOSEH_CONFIG, pin: config?.pin || SHOP_JOSEH_CONFIG.pin };
+    } else if (shopSlug === 'campodonico-nails' || shopSlug === 'campodonico-unas') {
+      config = {
+        ...SHOP_CAMPODONICO_NAILS_CONFIG,
+        slug: shopSlug,
+        pin: config?.pin || SHOP_CAMPODONICO_NAILS_CONFIG.pin
+      };
+    } else if (shopSlug === 'peluqueria-estetica' || shopSlug === 'salon-estetica') {
+      config = {
+        ...SHOP_SALON_ESTETICA_CONFIG,
+        slug: shopSlug,
+        pin: config?.pin || SHOP_SALON_ESTETICA_CONFIG.pin
+      };
     } else if (!config) {
       config = getDefaultShopConfig(shopSlug);
     }

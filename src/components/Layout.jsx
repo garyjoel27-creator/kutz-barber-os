@@ -24,9 +24,10 @@ import SuperAdminModal from './SuperAdminModal';
 import QRPosterModal, { BarberPinLockModal } from './QRPosterModal';
 import { useClients } from '../context/ClientContext';
 import { useShop } from '../context/ShopContext';
+import { getShopVertical, isFemaleVertical } from '../lib/shopUtils';
 import { soundFx } from '../lib/soundFx';
 
-const WALLPAPER_THEMES = [
+const BARBER_WALLPAPER_THEMES = [
   {
     id: 'urban',
     name: 'Estudio Urbano',
@@ -53,6 +54,33 @@ const WALLPAPER_THEMES = [
   },
 ];
 
+const FEMALE_WALLPAPER_THEMES = [
+  {
+    id: 'nails-bar',
+    name: 'Nail Bar & Manicura',
+    url: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=85&w=1920',
+    opacityClass: 'opacity-75',
+  },
+  {
+    id: 'hair-salon',
+    name: 'Salón Peluquería Luxury',
+    url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=85&w=1920',
+    opacityClass: 'opacity-75',
+  },
+  {
+    id: 'spa-cabin',
+    name: 'Cabina Estética & Spa',
+    url: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=85&w=1920',
+    opacityClass: 'opacity-75',
+  },
+  {
+    id: 'rose-matte',
+    name: 'Satén Rose Mate',
+    url: null,
+    opacityClass: 'opacity-0',
+  },
+];
+
 const Layout = () => {
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isKioskOpen, setIsKioskOpen] = useState(false);
@@ -66,16 +94,17 @@ const Layout = () => {
     try {
       const saved = localStorage.getItem('kutz_wallpaper_idx');
       const parsed = saved ? parseInt(saved, 10) : 0;
-      return parsed >= 0 && parsed < WALLPAPER_THEMES.length ? parsed : 0;
+      return parsed >= 0 && parsed < BARBER_WALLPAPER_THEMES.length ? parsed : 0;
     } catch {
       return 0;
     }
   });
 
-  const { activeModeConfig, clients } = useClients();
+  const { activeModeConfig, businessMode, setBusinessMode, clients } = useClients();
   const {
     activeShop,
     activeShopSlug,
+    switchShop,
     isSuperAdminOpen,
     openSuperAdmin,
     closeSuperAdmin,
@@ -84,6 +113,53 @@ const Layout = () => {
   } = useShop();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const activeVertical = getShopVertical(activeShop, activeShopSlug, businessMode);
+  const isFemale = isFemaleVertical(activeVertical);
+  const activeWallpapers = isFemale ? FEMALE_WALLPAPER_THEMES : BARBER_WALLPAPER_THEMES;
+
+  // Switch between the 3 specialties in 1 click (Barbería / Uñas & Manicura / Peluquería & Estética Sin Uñas)
+  const handleSwitchVertical = (targetVertical) => {
+    soundFx.playClick();
+    soundFx.triggerHaptic(12);
+    if (targetVertical === 'nails') {
+      if (activeVertical === 'barber' && activeShopSlug) {
+        try {
+          localStorage.setItem('kutz_last_barber_slug', activeShopSlug);
+        } catch {
+          // ignore
+        }
+      }
+      if (setBusinessMode) setBusinessMode('nails');
+      if (switchShop) switchShop('campodonico-nails', '2023');
+      setWallpaperIdx(0);
+    } else if (targetVertical === 'peluqueria') {
+      if (activeVertical === 'barber' && activeShopSlug) {
+        try {
+          localStorage.setItem('kutz_last_barber_slug', activeShopSlug);
+        } catch {
+          // ignore
+        }
+      }
+      if (setBusinessMode) setBusinessMode('peluqueria');
+      if (switchShop) switchShop('peluqueria-estetica', '2023');
+      setWallpaperIdx(1);
+    } else {
+      let targetBarberSlug = 'kutz-madrid';
+      try {
+        const savedBarber = localStorage.getItem('kutz_last_barber_slug');
+        if (savedBarber && !isFemaleVertical(savedBarber)) {
+          targetBarberSlug = savedBarber;
+        }
+      } catch {
+        // ignore
+      }
+      const barberPin = targetBarberSlug === 'joseh-barber' ? '2023' : '1234';
+      if (setBusinessMode) setBusinessMode('barber');
+      if (switchShop) switchShop(targetBarberSlug, barberPin);
+      setWallpaperIdx(0);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -100,7 +176,7 @@ const Layout = () => {
     soundFx.playClick();
     soundFx.triggerHaptic(10);
     setWallpaperIdx((prev) => {
-      const next = (prev + 1) % WALLPAPER_THEMES.length;
+      const next = (prev + 1) % activeWallpapers.length;
       try {
         localStorage.setItem('kutz_wallpaper_idx', String(next));
       } catch {
@@ -110,18 +186,27 @@ const Layout = () => {
     });
   };
 
-  const currentWallpaper = WALLPAPER_THEMES[wallpaperIdx] || WALLPAPER_THEMES[0];
+  const currentWallpaper = activeWallpapers[wallpaperIdx] || activeWallpapers[0];
   const starClient = clients.find((c) => String(c.id) === '3') || clients[0];
   void openSuperAdmin;
 
   const mainNav = [
     { path: '/', icon: LayoutDashboard, label: 'Salón Hoy' },
-    { path: '/clients', icon: Users, label: 'Clientes 3D' },
+    { path: '/clients', icon: Users, label: isFemale ? 'Clientas 3D' : 'Clientes 3D' },
   ];
 
+  const accentBg = isFemale ? 'bg-[#EC4899]' : 'bg-[#10B981]';
+  const accentText = isFemale ? 'text-[#F472B6]' : 'text-[#10B981]';
+  const accentLightText = isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]';
+  const accentShadow = isFemale ? 'shadow-[3px_3px_0px_#9D174D]' : 'shadow-[3px_3px_0px_#065F46]';
+
   return (
-    <div className="flex h-screen min-h-[100dvh] bg-[#0A0C0F] text-[#F3F4F6] overflow-hidden relative">
-      {/* Fondo Atmosférico Real de Barbería (Nítido y visible, cambia con 1 toque) */}
+    <div
+      className={`flex h-screen min-h-[100dvh] bg-[#0A0C0F] text-[#F3F4F6] overflow-hidden relative ${
+        isFemale ? 'theme-rose-luxury' : ''
+      }`}
+    >
+      {/* Fondo Atmosférico Real (Nítido y visible, adaptado a Barbería, Nail Bar o Peluquería & Estética) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none" aria-hidden="true">
         {currentWallpaper.url && (
           <img
@@ -144,25 +229,96 @@ const Layout = () => {
 
         {/* Veladura ligera para que el fondo se vea nítido sin perder lectura */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0A0C0F]/45 via-[#0A0C0F]/30 to-[#0A0C0F]/55" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#10B981]/10 via-transparent to-[#0A0C0F]/45" />
+        <div
+          className={`absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] ${
+            isFemale
+              ? 'from-[#EC4899]/15 via-transparent to-[#0A0C0F]/50'
+              : 'from-[#10B981]/10 via-transparent to-[#0A0C0F]/45'
+          }`}
+        />
       </div>
 
-      {/* Sidebar Escritorio — Limpia, Clara y Cañera */}
+      {/* Sidebar Escritorio — Limpia, Clara y Adaptable (Barbería / Uñas / Peluquería & Estética) */}
       <aside className="hidden md:flex w-72 bg-[#101318]/80 backdrop-blur-sm border-r border-[#252A36] flex-col justify-between shadow-[6px_0_35px_rgba(0,0,0,0.65)] z-20">
         <div className="overflow-y-auto no-scrollbar">
           {/* Marca */}
           <div className="p-5 border-b border-[#252A36]">
             <div className="flex items-center space-x-3">
-              <div className="w-11 h-11 rounded-xl bg-[#10B981] text-[#07090C] flex items-center justify-center shadow-[3px_3px_0px_#065F46] shrink-0">
-                <Scissors size={22} strokeWidth={2.5} />
+              <div
+                className={`w-11 h-11 rounded-xl ${accentBg} ${
+                  isFemale ? 'text-white' : 'text-[#07090C]'
+                } flex items-center justify-center ${accentShadow} shrink-0`}
+              >
+                {isFemale ? <Sparkles size={22} strokeWidth={2.5} /> : <Scissors size={22} strokeWidth={2.5} />}
               </div>
-              <div>
-                <h1 className="text-2xl font-serif font-black tracking-tight text-white leading-none uppercase">
-                  KUTZ <span className="text-[#10B981]">BARBER</span>
+              <div className="min-w-0">
+                <h1 className="text-xl font-serif font-black tracking-tight text-white leading-none uppercase truncate">
+                  {activeVertical === 'nails' ? (
+                    <>
+                      CM <span className="text-[#F472B6]">NAILS & SPA</span>
+                    </>
+                  ) : activeVertical === 'peluqueria' ? (
+                    <>
+                      LUMINA <span className="text-[#F472B6]">ESTÉTICA</span>
+                    </>
+                  ) : (
+                    <>
+                      KUTZ <span className="text-[#10B981]">BARBER</span>
+                    </>
+                  )}
                 </h1>
-                <p className="text-[11px] text-[#9CA3AF] mt-1 font-medium">
-                  Control diario de barbería
+                <p className="text-[11px] text-[#9CA3AF] mt-1 font-medium truncate">
+                  {activeVertical === 'nails'
+                    ? 'Uñas, Manicura, Pedicura & Facial'
+                    : activeVertical === 'peluqueria'
+                    ? 'Peluquería, Color & Estética (Sin Uñas)'
+                    : 'Control diario de barbería'}
                 </p>
+              </div>
+            </div>
+
+            {/* Conmutador Rápido de Especialidad en 1 Clic (Barbería / Uñas Hermana / Peluquería & Estética) */}
+            <div className="mt-4 p-1.5 rounded-xl bg-[#0A0C0F]/90 border border-[#252A36] space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] px-1.5 block">
+                Modo / Especialidad en vivo:
+              </span>
+              <div className="grid grid-cols-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchVertical('barber')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                    activeVertical === 'barber'
+                      ? 'bg-[#10B981] text-[#07090C]'
+                      : 'text-[#D1D5DB] hover:bg-[#141820]'
+                  }`}
+                >
+                  <span>💈 Barbería (José)</span>
+                  {activeVertical === 'barber' && <span className="text-[10px] font-black">ACTIVO</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchVertical('nails')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                    activeVertical === 'nails'
+                      ? 'bg-[#EC4899] text-white'
+                      : 'text-[#D1D5DB] hover:bg-[#141820]'
+                  }`}
+                >
+                  <span>💅 Uñas & Manicura (Hermana)</span>
+                  {activeVertical === 'nails' && <span className="text-[10px] font-black">ACTIVO</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchVertical('peluqueria')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                    activeVertical === 'peluqueria'
+                      ? 'bg-[#EC4899] text-white'
+                      : 'text-[#D1D5DB] hover:bg-[#141820]'
+                  }`}
+                >
+                  <span>💇‍♀️ Peluquería & Estética (Sin Uñas)</span>
+                  {activeVertical === 'peluqueria' && <span className="text-[10px] font-black">ACTIVO</span>}
+                </button>
               </div>
             </div>
 
@@ -173,22 +329,28 @@ const Layout = () => {
                 soundFx.playClick();
                 setWalkInOpen(!walkInOpen);
               }}
-              className={`mt-4 w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+              className={`mt-3 w-full px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
                 walkInOpen
-                  ? 'bg-[#10B981]/15 border-[#10B981]/50 hover:bg-[#10B981]/25'
+                  ? isFemale
+                    ? 'bg-[#EC4899]/15 border-[#EC4899]/50 hover:bg-[#EC4899]/25'
+                    : 'bg-[#10B981]/15 border-[#10B981]/50 hover:bg-[#10B981]/25'
                   : 'bg-[#F59E0B]/15 border-[#F59E0B]/50 hover:bg-[#F59E0B]/25'
               }`}
               title="Toca para cambiar si coges gente sin cita"
             >
               <div className="flex items-center space-x-2">
-                <Radio size={15} className={walkInOpen ? 'text-[#10B981] animate-pulse' : 'text-[#F59E0B]'} />
+                <Radio size={15} className={walkInOpen ? `${accentText} animate-pulse` : 'text-[#F59E0B]'} />
                 <span className="text-xs font-bold text-white">
                   {walkInOpen ? 'Abiertos · Sin cita' : 'Solo con cita previa'}
                 </span>
               </div>
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                  walkInOpen ? 'bg-[#10B981] text-[#07090C]' : 'bg-[#F59E0B] text-[#07090C]'
+                  walkInOpen
+                    ? isFemale
+                      ? 'bg-[#EC4899] text-white'
+                      : 'bg-[#10B981] text-[#07090C]'
+                    : 'bg-[#F59E0B] text-[#07090C]'
                 }`}
               >
                 {walkInOpen ? 'ON' : 'VIP'}
@@ -214,7 +376,9 @@ const Layout = () => {
                     const isTabActive = isActive || (item.path === '/' && location.pathname === '/dashboard');
                     return `flex items-center space-x-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-150 ${
                       isTabActive
-                        ? 'bg-[#10B981] text-[#07090C] shadow-[3px_3px_0px_#065F46]'
+                        ? isFemale
+                          ? 'bg-[#EC4899] text-white shadow-[3px_3px_0px_#9D174D]'
+                          : 'bg-[#10B981] text-[#07090C] shadow-[3px_3px_0px_#065F46]'
                         : 'text-[#E5E7EB] bg-[#141820]/70 hover:bg-[#1B202B] hover:text-white border border-transparent hover:border-[#252A36]'
                     }`;
                   }}
@@ -239,7 +403,7 @@ const Layout = () => {
                   }}
                   className="w-full px-3.5 py-3 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer group"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-[#10B981]/15 text-[#10B981] flex items-center justify-center shrink-0">
+                  <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F472B6]' : 'bg-[#10B981]/15 text-[#10B981]'} flex items-center justify-center shrink-0`}>
                     <Tv size={18} />
                   </div>
                   <div className="min-w-0">
@@ -273,7 +437,7 @@ const Layout = () => {
                   }}
                   className="w-full px-3.5 py-3 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer group"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-[#10B981]/15 text-[#34D399] flex items-center justify-center shrink-0">
+                  <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F9A8D4]' : 'bg-[#10B981]/15 text-[#34D399]'} flex items-center justify-center shrink-0`}>
                     <Film size={18} />
                   </div>
                   <div className="min-w-0">
@@ -290,12 +454,14 @@ const Layout = () => {
                   }}
                   className="w-full px-3.5 py-3 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer group"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-[#10B981]/15 text-[#10B981] flex items-center justify-center shrink-0">
+                  <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F472B6]' : 'bg-[#10B981]/15 text-[#10B981]'} flex items-center justify-center shrink-0`}>
                     <Sparkles size={18} />
                   </div>
                   <div className="min-w-0">
                     <span className="text-sm font-bold text-white block leading-tight">Asistente Rápido</span>
-                    <span className="text-[11px] text-[#9CA3AF] block truncate">Preguntar sobre clientes</span>
+                    <span className="text-[11px] text-[#9CA3AF] block truncate">
+                      {isFemale ? 'Preguntar sobre clientas' : 'Preguntar sobre clientes'}
+                    </span>
                   </div>
                 </button>
 
@@ -305,14 +471,18 @@ const Layout = () => {
                     soundFx.playClick();
                     setIsQRPosterOpen(true);
                   }}
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#10B981]/15 hover:bg-[#10B981]/25 border border-[#10B981]/50 flex items-center space-x-3 text-left transition-all cursor-pointer group"
+                  className={`w-full px-3.5 py-3 rounded-xl ${
+                    isFemale
+                      ? 'bg-[#EC4899]/15 hover:bg-[#EC4899]/25 border border-[#EC4899]/50'
+                      : 'bg-[#10B981]/15 hover:bg-[#10B981]/25 border border-[#10B981]/50'
+                  } flex items-center space-x-3 text-left transition-all cursor-pointer group`}
                 >
-                  <div className="w-9 h-9 rounded-lg bg-[#10B981] text-[#07090C] flex items-center justify-center shrink-0">
+                  <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899] text-white' : 'bg-[#10B981] text-[#07090C]'} flex items-center justify-center shrink-0`}>
                     <QrCode size={18} />
                   </div>
                   <div className="min-w-0">
                     <span className="text-sm font-bold text-white block leading-tight">Mi Cartel QR</span>
-                    <span className="text-[11px] text-[#34D399] block truncate">Reservas desde el móvil</span>
+                    <span className={`text-[11px] ${accentLightText} block truncate`}>Reservas desde el móvil</span>
                   </div>
                 </button>
               </div>
@@ -328,20 +498,25 @@ const Layout = () => {
               soundFx.playClick();
               navigate(starClient ? `/clients/${starClient.id}` : '/clients');
             }}
-            className="w-full px-3 py-2.5 rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#10B981]/40 flex items-center justify-between text-left transition-all cursor-pointer"
+            className={`w-full px-3 py-2.5 rounded-xl bg-[#141820] hover:bg-[#1B202B] border ${
+              isFemale ? 'border-[#EC4899]/40' : 'border-[#10B981]/40'
+            } flex items-center justify-between text-left transition-all cursor-pointer`}
           >
             <div className="flex items-center space-x-2 min-w-0">
-              <Star size={14} className="text-[#10B981] fill-[#10B981] shrink-0" />
+              <Star
+                size={14}
+                className={`${isFemale ? 'text-[#EC4899] fill-[#EC4899]' : 'text-[#10B981] fill-[#10B981]'} shrink-0`}
+              />
               <span className="text-xs font-bold text-white truncate">
-                {starClient ? `Ficha VIP: ${starClient.name.split(' ')[0]}` : 'Directorio Clientes 3D'}
+                {starClient ? `Ficha VIP: ${starClient.name.split(' ')[0]}` : 'Directorio 3D'}
               </span>
             </div>
-            <span className="text-[10px] font-bold text-[#34D399] shrink-0">Abrir →</span>
+            <span className={`text-[10px] font-bold ${accentLightText} shrink-0`}>Abrir →</span>
           </button>
 
           <div className="flex items-center justify-between px-1 text-[11px] text-[#9CA3AF]">
             <span className="font-semibold truncate">{activeShop?.name || activeModeConfig?.shortName || 'KUTZ BARBER'}</span>
-            <span className={activeShop?.status === 'paused' ? 'text-[#F59E0B] font-semibold' : 'text-[#34D399] font-semibold'}>
+            <span className={activeShop?.status === 'paused' ? 'text-[#F59E0B] font-semibold' : `${accentLightText} font-semibold`}>
               ● {activeShop?.status === 'paused' ? 'Pausado' : 'Online'}
             </span>
           </div>
@@ -354,8 +529,12 @@ const Layout = () => {
         <header className="bg-[#101318]/75 backdrop-blur-sm border-b border-[#252A36] px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 z-30">
           {/* Logo y salón activo en móvil */}
           <div className="flex items-center space-x-2 min-w-0 flex-1 md:hidden">
-            <div className="w-8 h-8 rounded-xl bg-[#10B981] text-[#07090C] flex items-center justify-center shadow-[2px_2px_0px_#065F46] shrink-0">
-              <Scissors size={16} strokeWidth={2.5} />
+            <div
+              className={`w-8 h-8 rounded-xl ${accentBg} ${
+                isFemale ? 'text-white shadow-[2px_2px_0px_#9D174D]' : 'text-[#07090C] shadow-[2px_2px_0px_#065F46]'
+              } flex items-center justify-center shrink-0`}
+            >
+              {isFemale ? <Sparkles size={16} strokeWidth={2.5} /> : <Scissors size={16} strokeWidth={2.5} />}
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-xs font-serif font-black text-white leading-tight uppercase truncate">
@@ -367,7 +546,7 @@ const Layout = () => {
                   soundFx.playClick();
                   setWalkInOpen(!walkInOpen);
                 }}
-                className="text-[10px] font-semibold text-[#34D399] block truncate"
+                className={`text-[10px] font-semibold ${accentLightText} block truncate`}
               >
                 {walkInOpen ? '🟢 Abiertos (Sin cita)' : '🟡 Solo con cita'}
               </button>
@@ -383,23 +562,29 @@ const Layout = () => {
             }}
             className="hidden md:flex items-center justify-between flex-1 max-w-md px-4 py-2 rounded-xl bg-[#141820]/90 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/50 text-xs text-[#9CA3AF] hover:text-white transition-all cursor-pointer"
           >
-            <span className="flex items-center space-x-2.5">
-              <Search size={15} className="text-[#10B981]" />
-              <span>Buscar cliente, teléfono o corte rápido...</span>
+            <span className="flex items-center space-x-2.5 truncate">
+              <Search size={15} className={accentText} />
+              <span className="truncate">
+                {activeVertical === 'nails'
+                  ? 'Buscar clienta, diseño de uñas o móvil...'
+                  : activeVertical === 'peluqueria'
+                  ? 'Buscar clienta, tinte/balayage, facial o móvil...'
+                  : 'Buscar cliente, teléfono o corte rápido...'}
+              </span>
             </span>
-            <span className="text-[10px] font-mono bg-[#0A0C0F] px-2 py-0.5 rounded border border-[#252A36] text-[#9CA3AF]">
+            <span className="text-[10px] font-mono bg-[#0A0C0F] px-2 py-0.5 rounded border border-[#252A36] text-[#9CA3AF] shrink-0">
               Ctrl + K
             </span>
           </button>
 
           {/* Botones directos compactos (0px overflow en 375px / 390px) */}
           <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
-            {/* Insignia del Salón Activo en Escritorio (sin botón Admin expuesto al barbero) */}
+            {/* Insignia del Salón Activo en Escritorio */}
             <div
               className="hidden md:flex px-3 py-2 min-h-[40px] rounded-xl bg-[#141820]/90 border border-[#252A36] text-xs font-bold text-white items-center space-x-2"
-              title="Barbería activa"
+              title="Salón activo"
             >
-              <span className={`w-2 h-2 rounded-full ${activeShop?.status === 'paused' ? 'bg-[#F59E0B]' : 'bg-[#10B981] animate-pulse'}`} />
+              <span className={`w-2 h-2 rounded-full ${activeShop?.status === 'paused' ? 'bg-[#F59E0B]' : `${accentBg} animate-pulse`}`} />
               <span className="truncate max-w-[180px]">{activeShop?.name || activeShopSlug}</span>
             </div>
 
@@ -410,7 +595,11 @@ const Layout = () => {
                 soundFx.playClick();
                 setIsQRPosterOpen(true);
               }}
-              className="px-2.5 sm:px-3 py-2 min-h-[40px] rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-xs font-black flex items-center space-x-1 transition-all cursor-pointer shadow-sm shrink-0"
+              className={`px-2.5 sm:px-3 py-2 min-h-[40px] rounded-xl ${
+                isFemale
+                  ? 'bg-[#EC4899] hover:bg-[#F472B6] text-white'
+                  : 'bg-[#10B981] hover:bg-[#34D399] text-[#07090C]'
+              } text-xs font-black flex items-center space-x-1 transition-all cursor-pointer shadow-sm shrink-0`}
               title="Ver e imprimir el Cartel QR de reservas del local"
             >
               <QrCode size={15} />
@@ -434,10 +623,10 @@ const Layout = () => {
               type="button"
               onClick={handleCycleWallpaper}
               className="p-2 sm:px-3 sm:py-2 min-h-[40px] min-w-[38px] rounded-xl bg-[#141820]/90 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/50 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-all cursor-pointer shrink-0"
-              title="Cambiar foto de fondo de la barbería"
+              title="Cambiar foto de fondo del salón"
               aria-label="Cambiar fondo"
             >
-              <ImageIcon size={15} className="text-[#10B981]" />
+              <ImageIcon size={15} className={accentText} />
               <span className="hidden sm:inline">Fondo: {currentWallpaper.name}</span>
             </button>
 
@@ -456,6 +645,48 @@ const Layout = () => {
           </div>
         </header>
 
+        {/* Barra de cambio rápido de Especialidad en Móvil y Escritorio (1 Clic: Barbería / Uñas / Peluquería & Estética) */}
+        <div className="bg-[#101318]/90 border-b border-[#252A36] px-3 sm:px-6 py-1.5 flex items-center justify-between gap-2 z-20">
+          <span className="hidden sm:inline text-[11px] font-bold text-[#9CA3AF] shrink-0">
+            Especialidad / Demo en 1 clic:
+          </span>
+          <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
+            <button
+              type="button"
+              onClick={() => handleSwitchVertical('barber')}
+              className={`flex-1 sm:flex-initial px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-black transition-all cursor-pointer truncate ${
+                activeVertical === 'barber'
+                  ? 'bg-[#10B981] text-[#07090C] shadow-sm'
+                  : 'bg-[#141820] text-[#D1D5DB] border border-[#252A36] hover:text-white'
+              }`}
+            >
+              💈 Barbería
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSwitchVertical('nails')}
+              className={`flex-1 sm:flex-initial px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-black transition-all cursor-pointer truncate ${
+                activeVertical === 'nails'
+                  ? 'bg-[#EC4899] text-white shadow-sm'
+                  : 'bg-[#141820] text-[#D1D5DB] border border-[#252A36] hover:text-white'
+              }`}
+            >
+              💅 Uñas & Manicura
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSwitchVertical('peluqueria')}
+              className={`flex-1 sm:flex-initial px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-black transition-all cursor-pointer truncate ${
+                activeVertical === 'peluqueria'
+                  ? 'bg-[#EC4899] text-white shadow-sm'
+                  : 'bg-[#141820] text-[#D1D5DB] border border-[#252A36] hover:text-white'
+              }`}
+            >
+              💇‍♀️ Peluquería & Estética
+            </button>
+          </div>
+        </div>
+
         {/* Contenido Principal con scroll fluido */}
         <main className="flex-1 overflow-y-auto pb-24 md:pb-10 scroll-smooth">
           <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -467,6 +698,9 @@ const Layout = () => {
                 openAssistant: () => setIsAIOpen(true),
                 openQRPoster: () => setIsQRPosterOpen(true),
                 lockScreen: () => setIsPinLocked(true),
+                activeVertical,
+                isFemale,
+                switchVertical: handleSwitchVertical,
               }}
             />
           </div>

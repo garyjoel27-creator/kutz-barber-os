@@ -12,6 +12,7 @@ import { registerEmpiricalSuites } from './empirical_m1_challenger2.test.mjs';
 import { registerChallenger1EmpiricalSuites } from './challenger_m1_empirical.test.mjs';
 import { registerM2MultiShopTests } from './m2_multishop_superadmin.test.mjs';
 import { registerPilar1To6VerificationTests } from './pilar1_6_verification.test.mjs';
+import { registerFemaleVerticalsVerificationTests } from './female_verticals_verification.test.mjs';
 
 async function main() {
   const runner = new TestRunner('KUTZ // BARBER OS & LuminaDesk Master E2E Suite');
@@ -42,6 +43,9 @@ async function main() {
 
   console.log('Loading Pillars 1–5 Real Handlers, Multi-Tenant & Interval Booking Verification Suites...');
   registerPilar1To6VerificationTests(runner);
+
+  console.log('Loading Female Verticals (CM Campodónico Nails & Peluquería/Estética Sin Uñas) Verification Suite...');
+  registerFemaleVerticalsVerificationTests(runner);
 
   const result = await runner.execute();
 

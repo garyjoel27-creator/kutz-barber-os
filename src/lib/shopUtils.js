@@ -129,6 +129,186 @@ export const SHOP_JOSEH_CONFIG = {
   }
 };
 
+export const SHOP_CAMPODONICO_NAILS_CONFIG = {
+  slug: 'campodonico-nails',
+  name: "CM Salón D’ Campodónico · Nails & Beauty",
+  subtitle: 'Uñas Acrílicas, Manicura, Pedicura & Estética',
+  vertical: 'nails',
+  theme: 'rose-luxury',
+  pin: '2023',
+  timezone: 'Atlantic/Canary',
+  logo: 'https://luminadesk-gary.netlify.app/logo.png',
+  address: 'Av. Alcalde Ginés de la Hoz, 2, Bajo Izq., 35500 Arrecife, Lanzarote',
+  phone: '638 877 945',
+  description:
+    'Estudio especializado en Uñas Acrílicas esculpidas (Tallas S, M y L), Rellenos de alta precisión, Manicura Semipermanente con refuerzo, Pedicura completa & Spa e Higiene Facial profunda en Arrecife, Lanzarote.',
+  instagramSalon: 'cm.salondcampodonico',
+  googleReviewUrl:
+    "https://www.google.com/maps/search/?api=1&query=CM+Sal%C3%B3n+D%27+Campod%C3%B3nico+Av.+Alcalde+Gin%C3%A9s+de+la+Hoz+2+Arrecife",
+  status: 'active',
+  configVersion: 2,
+  barbers: [
+    {
+      id: 'campodonico-nails-1',
+      name: 'Especialista Nails (D’ Campodónico)',
+      chair: 'MESA NAILS 1',
+      role: 'Master Nail Artist · Acrílicas, Gel & Nail Art',
+      specialty: 'Uñas Acrílicas & Manicura',
+      available: true
+    },
+    {
+      id: 'campodonico-spa-2',
+      name: 'Especialista Pedicura & Cabina Facial',
+      chair: 'CABINA SPA 2',
+      role: 'Pedicura Spa & Cuidado Facial',
+      specialty: 'Pedicura Completa & Higiene Facial',
+      available: true
+    }
+  ],
+  services: [
+    { id: 'cn1', name: 'Uñas acrílicas Talla S', durationMinutes: 90, price: 45, priceLabel: '45€', category: 'acrilicas', dayGroup: 'all' },
+    { id: 'cn2', name: 'Uñas acrílicas Talla M/L', durationMinutes: 105, price: 50, priceLabel: '50€', category: 'acrilicas', dayGroup: 'all' },
+    { id: 'cn3', name: 'Relleno acrílico', durationMinutes: 75, price: 35, priceLabel: '35€', category: 'acrilicas', dayGroup: 'all' },
+    { id: 'cn4', name: 'Manicura semipermanente con refuerzo', durationMinutes: 60, price: 25, priceLabel: '25€', category: 'manicura', dayGroup: 'all' },
+    { id: 'cn5', name: 'Manicura / Limpieza tradicional', durationMinutes: 45, price: 20, priceLabel: '20€', category: 'manicura', dayGroup: 'all' },
+    { id: 'cn6', name: 'Pedicura completa & Spa', durationMinutes: 60, price: 30, priceLabel: '30€', category: 'pedicura', dayGroup: 'all' },
+    { id: 'cn7', name: 'Retiro semipermanente', durationMinutes: 15, price: 5, priceLabel: '5€', category: 'retiros', dayGroup: 'all' },
+    { id: 'cn8', name: 'Retiro tradicional', durationMinutes: 15, price: 3, priceLabel: '3€', category: 'retiros', dayGroup: 'all' },
+    { id: 'cn9', name: 'Reparación uña caída', durationMinutes: 15, price: 3, priceLabel: '3€', category: 'retiros', dayGroup: 'all' },
+    { id: 'cn10', name: 'Higiene facial profunda', durationMinutes: 60, price: 35, priceLabel: '35€', category: 'facial', dayGroup: 'all' }
+  ],
+  schedule: {
+    startHour: 9,
+    endHour: 20,
+    openTime: '10:00',
+    closeTime: '19:00',
+    slotMinutes: 30,
+    slotIntervalMinutes: 30,
+    workDays: [1, 2, 3, 4, 5, 6],
+    hoursByDay: {
+      1: { openTime: '10:00', closeTime: '19:00' },
+      2: { openTime: '10:00', closeTime: '19:00' },
+      3: { openTime: '10:00', closeTime: '19:00' },
+      4: { openTime: '10:00', closeTime: '19:00' },
+      5: { openTime: '09:30', closeTime: '20:00' },
+      6: { openTime: '09:30', closeTime: '15:00' }
+    }
+  }
+};
+
+export const SHOP_SALON_ESTETICA_CONFIG = {
+  slug: 'peluqueria-estetica',
+  name: 'Lumina · Peluquería & Estética (Sin Uñas)',
+  subtitle: 'Estilismo Femenino, Colorimetría Orgánica & Cabina Facial',
+  vertical: 'peluqueria',
+  theme: 'rose-luxury',
+  pin: '2023',
+  timezone: 'Atlantic/Canary',
+  logo: 'https://luminadesk-gary.netlify.app/logo.png',
+  address: 'Av. Alcalde Ginés de la Hoz, 2, 35500 Arrecife, Lanzarote',
+  phone: '638 877 945',
+  description:
+    'Salón de Peluquería Femenina y Centro de Estética Avanzada. Especialistas en Colorimetría Orgánica, Mechas Balayage, Bótox Capilar, Higiene Facial con Ultrasonidos, Radiofrecuencia, Drenaje Corporal y Diseño de Mirada.',
+  instagramSalon: 'cm.salondcampodonico',
+  googleReviewUrl:
+    "https://www.google.com/maps/search/?api=1&query=CM+Sal%C3%B3n+D%27+Campod%C3%B3nico+Av.+Alcalde+Gin%C3%A9s+de+la+Hoz+2+Arrecife",
+  status: 'active',
+  configVersion: 2,
+  barbers: [
+    {
+      id: 'estilista-color',
+      name: 'Elena (Colorimetría & Balayage)',
+      chair: 'TOCADOR 1',
+      role: 'Directora de Salón · Colorista & Mechas',
+      specialty: 'Balayage, Babylights & Tinte Orgánico',
+      available: true
+    },
+    {
+      id: 'estilista-corte',
+      name: 'Sofía (Corte, Brushing & Keratina)',
+      chair: 'TOCADOR 2',
+      role: 'Estilista Capilar · Visagismo & Tratamientos',
+      specialty: 'Corte, Brushing & Botox Capilar',
+      available: true
+    },
+    {
+      id: 'cabina-facial',
+      name: 'Valeria (Cabina Facial & Corporal)',
+      chair: 'CABINA ESTÉTICA 3',
+      role: 'Especialista Estética Facial & Mirada',
+      specialty: 'Higiene Facial, Radiofrecuencia & Cejas',
+      available: true
+    }
+  ],
+  services: [
+    { id: 'pe1', name: 'Corte y Peinado / Brushing', durationMinutes: 60, price: 32, priceLabel: '32€', category: 'peluqueria', dayGroup: 'all' },
+    { id: 'pe2', name: 'Color / Tinte de Raíz Orgánico', durationMinutes: 75, price: 38, priceLabel: '38€', category: 'peluqueria', dayGroup: 'all' },
+    { id: 'pe3', name: 'Mechas Balayage / Babylights + Matiz', durationMinutes: 120, price: 85, priceLabel: '85€', category: 'peluqueria', dayGroup: 'all' },
+    { id: 'pe4', name: 'Tratamiento Hidratación / Keratina / Botox Capilar', durationMinutes: 75, price: 55, priceLabel: '55€', category: 'peluqueria', dayGroup: 'all' },
+    { id: 'pe5', name: 'Higiene Facial Profunda + Ultrasonidos', durationMinutes: 60, price: 45, priceLabel: '45€', category: 'facial', dayGroup: 'all' },
+    { id: 'pe6', name: 'Radiofrecuencia / Rejuvenecimiento Facial', durationMinutes: 60, price: 50, priceLabel: '50€', category: 'facial', dayGroup: 'all' },
+    { id: 'pe7', name: 'Peeling Luminosidad & Vitaminas', durationMinutes: 45, price: 48, priceLabel: '48€', category: 'facial', dayGroup: 'all' },
+    { id: 'pe8', name: 'Masaje Relajante / Drenaje Corporal', durationMinutes: 60, price: 40, priceLabel: '40€', category: 'corporal', dayGroup: 'all' },
+    { id: 'pe9', name: 'Diseño de Cejas & Lifting de Pestañas', durationMinutes: 45, price: 30, priceLabel: '30€', category: 'mirada', dayGroup: 'all' }
+  ],
+  schedule: {
+    startHour: 9,
+    endHour: 20,
+    openTime: '09:30',
+    closeTime: '19:30',
+    slotMinutes: 30,
+    slotIntervalMinutes: 30,
+    workDays: [1, 2, 3, 4, 5, 6],
+    hoursByDay: {
+      1: { openTime: '09:30', closeTime: '19:30' },
+      2: { openTime: '09:30', closeTime: '19:30' },
+      3: { openTime: '09:30', closeTime: '19:30' },
+      4: { openTime: '09:30', closeTime: '19:30' },
+      5: { openTime: '09:30', closeTime: '20:00' },
+      6: { openTime: '09:30', closeTime: '15:00' }
+    }
+  }
+};
+
+/**
+ * Resolves the active specialty vertical ('barber' | 'nails' | 'peluqueria')
+ */
+export function getShopVertical(shop = null, slug = '', businessMode = '') {
+  const cleanSlug = normalizeShopSlug(slug || shop?.slug || '');
+  if (
+    cleanSlug === 'campodonico-nails' ||
+    cleanSlug === 'campodonico-unas' ||
+    shop?.vertical === 'nails' ||
+    businessMode === 'nails'
+  ) {
+    return 'nails';
+  }
+  if (
+    cleanSlug === 'peluqueria-estetica' ||
+    cleanSlug === 'salon-estetica' ||
+    shop?.vertical === 'peluqueria' ||
+    shop?.vertical === 'estetica' ||
+    businessMode === 'peluqueria' ||
+    businessMode === 'estetica'
+  ) {
+    return 'peluqueria';
+  }
+  return 'barber';
+}
+
+export function isFemaleVertical(verticalOrSlug = '') {
+  const v = String(verticalOrSlug || '').toLowerCase();
+  return (
+    v === 'nails' ||
+    v === 'peluqueria' ||
+    v === 'estetica' ||
+    v.includes('nails') ||
+    v.includes('unas') ||
+    v.includes('peluqueria') ||
+    v.includes('estetica')
+  );
+}
+
 /**
  * Normalizes tenant shop slugs to lowercase alphanumeric with single hyphens
  */

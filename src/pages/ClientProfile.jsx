@@ -25,8 +25,12 @@ const ClientProfile = () => {
     addBono,
     consumeBonoSession,
     deleteBono,
+    businessMode,
     activeModeConfig
   } = useClients();
+  const isNailsMode = businessMode === 'nails';
+  const isPeluqueriaEsteticaMode = businessMode === 'peluqueria' || businessMode === 'estetica';
+  const isFemaleMode = isNailsMode || isPeluqueriaEsteticaMode;
   
   // Modal de Consentimiento RGPD y Firma Digital
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
@@ -608,20 +612,28 @@ const ClientProfile = () => {
       {activeProfileTab === 'sessions' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
-          {/* NUEVO: MAPA TÉCNICO DE SILLÓN // BLUEPRINT 4 ZONAS (Lectura rápida a 1 metro) */}
-          <div className="luxury-card p-5 sm:p-6 border-l-4 border-l-[#10B981]">
+          {/* NUEVO: MAPA TÉCNICO DE SILLÓN / NAIL BAR / CABINA // BLUEPRINT 4 ZONAS (Lectura rápida a 1 metro) */}
+          <div className={`luxury-card p-5 sm:p-6 border-l-4 ${isFemaleMode ? 'border-l-[#EC4899]' : 'border-l-[#10B981]'}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#252A36]">
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded bg-[#10B981] text-[#07090C] uppercase">
+                  <span className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded ${isFemaleMode ? 'bg-[#EC4899] text-white' : 'bg-[#10B981] text-[#07090C]'} uppercase`}>
                     BLUEPRINT // 4 ZONAS
                   </span>
-                  <span className="text-[10px] font-mono text-[#34D399] uppercase tracking-wider">
-                    MAPA DE MÁQUINA, CRÁNEO & NAVAJA
+                  <span className={`text-[10px] font-mono ${isFemaleMode ? 'text-[#F9A8D4]' : 'text-[#34D399]'} uppercase tracking-wider`}>
+                    {isNailsMode
+                      ? 'ARQUITECTURA DE UÑAS, TALLA, BASE & CUTÍCULA'
+                      : isPeluqueriaEsteticaMode
+                      ? 'FÓRMULA DE COLORIMETRÍA, FIBRA & CABINA ESTÉTICA'
+                      : 'MAPA DE MÁQUINA, CRÁNEO & NAVAJA'}
                   </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-serif font-bold text-white uppercase mt-1">
-                  Receta Maestra en Sillón — {client.name}
+                  {isNailsMode
+                    ? `Diseño Maestro de Uñas — ${client.name}`
+                    : isPeluqueriaEsteticaMode
+                    ? `Pasaporte Técnico de Color & Cabina — ${client.name}`
+                    : `Receta Maestra en Sillón — ${client.name}`}
                 </h3>
               </div>
 
@@ -631,56 +643,86 @@ const ClientProfile = () => {
                   onClick={() => handleCopyFormula(lastFormulaTreatment.formula, lastFormulaTreatment.name)}
                   className="btn-author-secondary text-xs py-2 px-3.5 cursor-pointer self-start sm:self-auto"
                 >
-                  <Copy size={13} className="text-[#10B981]" />
-                  <span>Repetir Receta Hoy ⚡</span>
+                  <Copy size={13} className={isFemaleMode ? 'text-[#EC4899]' : 'text-[#10B981]'} />
+                  <span>{isNailsMode ? 'Repetir Diseño Hoy ⚡' : isPeluqueriaEsteticaMode ? 'Repetir Fórmula Hoy ⚡' : 'Repetir Receta Hoy ⚡'}</span>
                 </button>
               )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-4">
-              {/* Zona 1: Laterales & Fade */}
+              {/* Zona 1 */}
               <div className="p-3.5 rounded-xl bg-[#0E1117] border border-[#252A36]">
-                <span className="text-[10px] font-mono font-bold text-[#10B981] uppercase block">
-                  [ZONA 01] LATERALES & FADE
+                <span className={`text-[10px] font-mono font-bold ${isFemaleMode ? 'text-[#F472B6]' : 'text-[#10B981]'} uppercase block`}>
+                  {isNailsMode
+                    ? '[ZONA 01] FORMA, TALLA & BASE'
+                    : isPeluqueriaEsteticaMode
+                    ? '[ZONA 01] FÓRMULA COLOR / CABINA'
+                    : '[ZONA 01] LATERALES & FADE'}
                 </span>
                 <p className="text-xs font-mono font-bold text-white mt-1.5 leading-snug">
                   {lastFormulaTreatment?.formula
                     ? lastFormulaTreatment.formula.split('|')[0]
+                    : isNailsMode
+                    ? 'Forma Almendra · Talla M · Acrílico Cover Pink'
+                    : isPeluqueriaEsteticaMode
+                    ? 'Raíz Tinte Orgánico 7.1 (20 vol) + Matiz Gloss 9.21'
                     : 'Skin Fade #000 Shaver → #0.5 → #1.5'}
                 </p>
-                <span className="inline-block mt-2 text-[10px] font-mono px-2 py-0.5 rounded bg-[#10B981]/15 text-[#34D399] border border-[#10B981]/30">
-                  Palanca abierta en transición
+                <span className={`inline-block mt-2 text-[10px] font-mono px-2 py-0.5 rounded ${isFemaleMode ? 'bg-[#EC4899]/15 text-[#F9A8D4] border border-[#EC4899]/30' : 'bg-[#10B981]/15 text-[#34D399] border border-[#10B981]/30'}`}>
+                  {isNailsMode
+                    ? 'Sellado de cutícula con torno ruso'
+                    : isPeluqueriaEsteticaMode
+                    ? 'Fórmula verificada en salón'
+                    : 'Palanca abierta en transición'}
                 </span>
               </div>
 
-              {/* Zona 2: Coronilla & Remolinos */}
+              {/* Zona 2 */}
               <div className="p-3.5 rounded-xl bg-[#0E1117] border border-[#252A36]">
-                <span className="text-[10px] font-mono font-bold text-[#34D399] uppercase block">
-                  [ZONA 02] CRÁNEO & REMOLINOS
+                <span className={`text-[10px] font-mono font-bold ${isFemaleMode ? 'text-[#F9A8D4]' : 'text-[#34D399]'} uppercase block`}>
+                  {isNailsMode
+                    ? '[ZONA 02] LÁMINA UNGUEAL & CRECIMIENTO'
+                    : isPeluqueriaEsteticaMode
+                    ? '[ZONA 02] DIAGNÓSTICO CAPILAR / PIEL'
+                    : '[ZONA 02] CRÁNEO & REMOLINOS'}
                 </span>
                 <p className="text-xs text-[#D1D5DB] mt-1.5 leading-snug">
-                  {client.skinType || client.notes || 'Remolino en coronilla derecha — dejar longitud de seguridad (#2).'}
+                  {client.skinType || client.notes || 'Sin observaciones especiales anotadas.'}
                 </p>
               </div>
 
-              {/* Zona 3: Zona Superior & Textura */}
+              {/* Zona 3 */}
               <div className="p-3.5 rounded-xl bg-[#0E1117] border border-[#252A36]">
-                <span className="text-[10px] font-mono font-bold text-[#34D399] uppercase block">
-                  [ZONA 03] TOP & ACABADO
+                <span className={`text-[10px] font-mono font-bold ${isFemaleMode ? 'text-[#F9A8D4]' : 'text-[#34D399]'} uppercase block`}>
+                  {isNailsMode
+                    ? '[ZONA 03] TONO, EFECTO & TOP COAT'
+                    : isPeluqueriaEsteticaMode
+                    ? '[ZONA 03] ACABADO & PROTOCOLO'
+                    : '[ZONA 03] TOP & ACABADO'}
                 </span>
                 <p className="text-xs text-[#D1D5DB] mt-1.5 leading-snug">
-                  {lastFormulaTreatment?.formula?.split('|')[1] || 'Tijera texturizada en frontal + Polvos mate de volumen.'}
+                  {lastFormulaTreatment?.formula?.split('|')[1] ||
+                    lastFormulaTreatment?.notes ||
+                    (isNailsMode
+                      ? 'Baby Boomer / Efecto Chrome Pearl + Aceite de almendras.'
+                      : isPeluqueriaEsteticaMode
+                      ? 'Brushing ondas suaves + Sérum sellador de puntas / Velo colágeno.'
+                      : 'Tijera texturizada en frontal + Polvos mate de volumen.')}
                 </p>
               </div>
 
-              {/* Zona 4: Barba, Navaja & Sensibilidad */}
+              {/* Zona 4 */}
               <div className="p-3.5 rounded-xl bg-[#0E1117] border border-[#F59E0B]/40">
                 <span className="text-[10px] font-mono font-bold text-[#FBBF24] uppercase flex items-center">
                   <ShieldAlert size={12} className="mr-1" />
-                  [ZONA 04] BARBA & PIEL
+                  {isNailsMode
+                    ? '[ZONA 04] CUTÍCULA, LÁMPARA & ACRILATOS'
+                    : isPeluqueriaEsteticaMode
+                    ? '[ZONA 04] ALERGIAS PPD & SENSIBILIDAD'
+                    : '[ZONA 04] BARBA & PIEL'}
                 </span>
                 <p className="text-xs text-[#F3F4F6] mt-1.5 leading-snug">
-                  {client.allergies || 'Piel sin sensibilidad especial al Shaver o navaja.'}
+                  {client.allergies || 'Sin alergias ni sensibilidades reportadas.'}
                 </p>
               </div>
             </div>
@@ -1521,18 +1563,35 @@ const ClientProfile = () => {
                   placeholder="Ej. Shaver #000 → #0.5 (1 dedo) → #1.5 abierta | Superior: Tijera | Barba: Navaja + Toalla Caliente" 
                 />
 
-                {/* Asistente Rápido de Peines / Fade / Barba en 1 Clic */}
+                {/* Asistente Rápido de Receta en 1 Clic (Adaptado a Uñas / Peluquería & Estética / Barbería) */}
                 <div className="mt-2.5 p-3 rounded-xl bg-[#14171D] border border-[#262B36] space-y-2.5">
-                  <div className="flex items-center space-x-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[#10B981]">
+                  <div className={`flex items-center space-x-1.5 text-[10px] font-mono font-bold uppercase tracking-wider ${isFemaleMode ? 'text-[#F472B6]' : 'text-[#10B981]'}`}>
                     <Scissors size={12} />
-                    <span>Constructor Rápido de Receta Barber (Pulsa para añadir):</span>
+                    <span>
+                      {isNailsMode
+                        ? 'Constructor Rápido de Diseño de Uñas (Pulsa para añadir):'
+                        : isPeluqueriaEsteticaMode
+                        ? 'Constructor Rápido de Colorimetría & Cabina (Pulsa para añadir):'
+                        : 'Constructor Rápido de Receta Barber (Pulsa para añadir):'}
+                    </span>
                   </div>
 
-                  {/* Peines / Guías */}
+                  {/* Grupo 1 */}
                   <div>
-                    <span className="text-[10px] font-mono text-[#9CA3AF] block mb-1">1. Peines / Guías de Máquina:</span>
+                    <span className="text-[10px] font-mono text-[#9CA3AF] block mb-1">
+                      {isNailsMode
+                        ? '1. Forma & Talla de Uña:'
+                        : isPeluqueriaEsteticaMode
+                        ? '1. Colorimetría, Raíz & Oxidantes:'
+                        : '1. Peines / Guías de Máquina:'}
+                    </span>
                     <div className="flex flex-wrap gap-1">
-                      {['Shaver #000', 'Guía #0 (Al ras)', 'Guía #0.5 (Media)', 'Guía #1', 'Guía #1.5 (Especial)', 'Guía #2', 'Guía #3'].map(guard => (
+                      {(isNailsMode
+                        ? ['Forma Almendra', 'Forma Coffin / Ballerina', 'Cuadrada Suave (Squoval)', 'Talla S', 'Talla M', 'Talla L']
+                        : isPeluqueriaEsteticaMode
+                        ? ['Raíz Tinte Orgánico (20 vol)', 'Balayage Mano Alzada', 'Babylights + Money Piece', 'Matiz Gloss (6 vol, 12m)', 'Protector Plex Paso 1+2']
+                        : ['Shaver #000', 'Guía #0 (Al ras)', 'Guía #0.5 (Media)', 'Guía #1', 'Guía #1.5 (Especial)', 'Guía #2', 'Guía #3']
+                      ).map(guard => (
                         <button
                           key={guard}
                           type="button"
@@ -1545,11 +1604,22 @@ const ClientProfile = () => {
                     </div>
                   </div>
 
-                  {/* Estructura de Degradado */}
+                  {/* Grupo 2 */}
                   <div>
-                    <span className="text-[10px] font-mono text-[#9CA3AF] block mb-1">2. Tipo de Fade & Superior:</span>
+                    <span className="text-[10px] font-mono text-[#9CA3AF] block mb-1">
+                      {isNailsMode
+                        ? '2. Sistema Acrílico / Gel / Nivelación:'
+                        : isPeluqueriaEsteticaMode
+                        ? '2. Tratamiento Capilar & Brushing:'
+                        : '2. Tipo de Fade & Superior:'}
+                    </span>
                     <div className="flex flex-wrap gap-1">
-                      {['Skin Fade Alto', 'Mid Drop Fade', 'Low Taper Fade', 'Burst Fade / Mullet', 'Superior a Tijera Point Cutting'].map(fade => (
+                      {(isNailsMode
+                        ? ['Acrílico Cover Pink', 'Relleno Acrílico', 'Base Rubber Rosada #02', 'Nivelación Ápice', 'Torno Manicura Rusa']
+                        : isPeluqueriaEsteticaMode
+                        ? ['Bótox Capilar Ácido Hialurónico', 'Alisado Keratina Orgánica', 'Corte Visagismo & Capas', 'Brushing Ondas Suaves']
+                        : ['Skin Fade Alto', 'Mid Drop Fade', 'Low Taper Fade', 'Burst Fade / Mullet', 'Superior a Tijera Point Cutting']
+                      ).map(fade => (
                         <button
                           key={fade}
                           type="button"
@@ -1562,11 +1632,22 @@ const ClientProfile = () => {
                     </div>
                   </div>
 
-                  {/* Barba & Acabado */}
+                  {/* Grupo 3 */}
                   <div>
-                    <span className="text-[10px] font-mono text-[#9CA3AF] block mb-1">3. Ritual de Barba & Styling:</span>
+                    <span className="text-[10px] font-mono text-[#9CA3AF] block mb-1">
+                      {isNailsMode
+                        ? '3. Efecto, Color & Spa:'
+                        : isPeluqueriaEsteticaMode
+                        ? '3. Protocolo en Cabina Facial & Mirada:'
+                        : '3. Ritual de Barba & Styling:'}
+                    </span>
                     <div className="flex flex-wrap gap-1">
-                      {['Perfilado a Navaja', 'Toalla Caliente + Ozono', 'Polvos de Textura Mate', 'Piedra Alumbre + Bálsamo'].map(beard => (
+                      {(isNailsMode
+                        ? ['Baby Boomer Milky', 'Francesa Micro Blanca', 'Efecto Chrome Pearl Glazed', 'Pedicura Spa Sales Marinas', 'Aceite Cutículas Almendra']
+                        : isPeluqueriaEsteticaMode
+                        ? ['Higiene Facial + Ultrasonidos', 'Radiofrecuencia Facial 40°C', 'Peeling Luminosidad Vit C', 'Masaje Drenaje Corporal', 'Diseño Cejas & Lifting Pestañas']
+                        : ['Perfilado a Navaja', 'Toalla Caliente + Ozono', 'Polvos de Textura Mate', 'Piedra Alumbre + Bálsamo']
+                      ).map(beard => (
                         <button
                           key={beard}
                           type="button"
@@ -1690,18 +1771,37 @@ const ClientProfile = () => {
             </div>
 
             <form onSubmit={handleCreateBono} className="p-6 space-y-4">
-              {/* Sugerencias Rápidas de Bonos de Barbería */}
+              {/* Sugerencias Rápidas de Bonos */}
               <div>
                 <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#10B981] mb-1.5">
-                  Packs de Barbería Más Vendidos:
+                  {isNailsMode
+                    ? 'Packs de Uñas, Manicura & Pedicura Más Vendidos:'
+                    : isPeluqueriaEsteticaMode
+                    ? 'Packs de Peluquería & Cabina Estética Más Vendidos:'
+                    : 'Packs de Barbería Más Vendidos:'}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { name: 'Membresía VIP: 4 Cortes Skin Fade + Barba', sessions: 4, price: '95€' },
-                    { name: 'Bono Crew: 4 Cortes Fade Mensual', sessions: 4, price: '68€' },
-                    { name: 'Pack Trimestral 3 Cortes + Ritual Barba', sessions: 3, price: '75€' },
-                    { name: 'Bono 5 Perfilados de Barba & Toalla Caliente', sessions: 5, price: '65€' }
-                  ].map((sug, idx) => (
+                  {(isNailsMode
+                    ? [
+                        { name: 'Bono Nails VIP: 4 Rellenos Acrílicos + Hidratación', sessions: 4, price: '125€' },
+                        { name: 'Pack 4 Manicuras Semipermanentes con Refuerzo', sessions: 4, price: '90€' },
+                        { name: 'Pack 3 Manicuras Refuerzo + Pedicura Completa & Spa', sessions: 3, price: '145€' },
+                        { name: 'Bono 3 Higienes Faciales Profundas + Manicura', sessions: 3, price: '135€' }
+                      ]
+                    : isPeluqueriaEsteticaMode
+                    ? [
+                        { name: 'Bono Color & Brushing: 4 Retoques de Raíz + Peinado', sessions: 4, price: '140€' },
+                        { name: 'Bono Cabina Facial: 4 Sesiones Radiofrecuencia + Vitaminas', sessions: 4, price: '175€' },
+                        { name: 'Membresía Salón & Cabina: 4 Botox Capilar + Higiene Facial', sessions: 4, price: '190€' },
+                        { name: 'Bono Relax: 4 Masajes Drenaje Corporal + Mirada', sessions: 4, price: '150€' }
+                      ]
+                    : [
+                        { name: 'Membresía VIP: 4 Cortes Skin Fade + Barba', sessions: 4, price: '95€' },
+                        { name: 'Bono Crew: 4 Cortes Fade Mensual', sessions: 4, price: '68€' },
+                        { name: 'Pack Trimestral 3 Cortes + Ritual Barba', sessions: 3, price: '75€' },
+                        { name: 'Bono 5 Perfilados de Barba & Toalla Caliente', sessions: 5, price: '65€' }
+                      ]
+                  ).map((sug, idx) => (
                     <button
                       key={idx}
                       type="button"

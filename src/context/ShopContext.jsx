@@ -5,6 +5,8 @@ import {
   DEFAULT_SHOP_CONFIG,
   SHOP_REX_CONFIG,
   SHOP_JOSEH_CONFIG,
+  SHOP_CAMPODONICO_NAILS_CONFIG,
+  SHOP_SALON_ESTETICA_CONFIG,
   normalizeShopSlug,
   validateTenantConfig,
   resolveTenantSlug,
@@ -30,6 +32,10 @@ function getFallbackShopForSlug(slug, storage = null, stripPin = false) {
     base = { ...SHOP_REX_CONFIG };
   } else if (cleanSlug === SHOP_JOSEH_CONFIG.slug) {
     base = { ...SHOP_JOSEH_CONFIG };
+  } else if (cleanSlug === SHOP_CAMPODONICO_NAILS_CONFIG.slug || cleanSlug === 'campodonico-unas') {
+    base = { ...SHOP_CAMPODONICO_NAILS_CONFIG, slug: cleanSlug };
+  } else if (cleanSlug === SHOP_SALON_ESTETICA_CONFIG.slug || cleanSlug === 'salon-estetica') {
+    base = { ...SHOP_SALON_ESTETICA_CONFIG, slug: cleanSlug };
   } else if (cleanSlug === DEFAULT_SHOP_CONFIG.slug || cleanSlug === 'default') {
     base = { ...DEFAULT_SHOP_CONFIG };
   } else {

@@ -16,12 +16,13 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { soundFx } from '../lib/soundFx';
 import { useClients, getFadeAlert } from '../context/ClientContext';
-import { buildWhatsAppUrl } from '../lib/shopUtils';
+import { useShop } from '../context/ShopContext';
+import { buildWhatsAppUrl, getShopVertical, isFemaleVertical } from '../lib/shopUtils';
 
 /**
- * Tarjeta 3D Giratoria para Barberos (Bento Flip Card)
- * Anverso: Foto grande, nombre, aviso de repaso / bono VIP, WhatsApp y botón Girar.
- * Reverso: Receta real del cliente, avisos (remolinos/piel) y botón de 1 toque "Repetir corte hoy".
+ * Tarjeta 3D Giratoria para Barbería, Uñas & Manicura y Peluquería & Estética (Bento Flip Card)
+ * Anverso: Foto grande, nombre, aviso de repaso / relleno / bono VIP, WhatsApp y botón Girar.
+ * Reverso: Receta/Fórmula real del cliente o clienta, avisos y botón de 1 toque para repetir hoy.
  */
 const ClientBentoCard = ({
   client,
@@ -35,7 +36,12 @@ const ClientBentoCard = ({
   const [quickNotes, setQuickNotes] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState('');
   const navigate = useNavigate();
-  const { quickAddSession, updateClient, deleteClient } = useClients();
+  const { quickAddSession, updateClient, deleteClient, businessMode } = useClients();
+  const shopCtx = useShop();
+  const activeShop = shopCtx?.activeShop || null;
+  const activeShopSlug = shopCtx?.activeShopSlug || '';
+  const activeVertical = getShopVertical(activeShop, activeShopSlug, businessMode);
+  const isFemale = isFemaleVertical(activeVertical);
 
   if (!client) return null;
 
@@ -50,10 +56,16 @@ const ClientBentoCard = ({
         .toUpperCase()
     : 'CL';
   const latestTreatment = client.treatments?.[0];
+  const defaultFormulaText =
+    activeVertical === 'nails'
+      ? 'Forma Almendra · Talla M · Acrílico Cover Pink + Brillo Glazed'
+      : activeVertical === 'peluqueria'
+      ? 'Raíz Tinte Orgánico 7.1 (20 vol) · Matiz Gloss 9.21 + Higiene Facial'
+      : 'Fade #0.5 → #1.5 · Tijera arriba';
   const currentFormula =
     latestTreatment?.formula ||
     client.treatment ||
-    'Fade #0.5 → #1.5 · Tijera arriba';
+    defaultFormulaText;
   const activeBono = client.bonos?.find(
     (b) => b.totalSessions - b.usedSessions > 0
   );
@@ -86,13 +98,29 @@ const ClientBentoCard = ({
     const notesToSave =
       quickNotes.trim() ||
       latestTreatment?.notes ||
-      'Corte habitual realizado en sillón';
+      (activeVertical === 'nails'
+        ? 'Diseño de uñas y manicura realizado hoy'
+        : activeVertical === 'peluqueria'
+        ? 'Fórmula de peluquería / cabina realizada hoy'
+        : 'Corte habitual realizado en sillón');
 
     const sessionPayload = {
-      name: latestTreatment?.name || 'Corte de Cabello / Fade',
+      name:
+        latestTreatment?.name ||
+        (activeVertical === 'nails'
+          ? 'Relleno acrílico / Manicura'
+          : activeVertical === 'peluqueria'
+          ? 'Colorimetría / Cabina Estética'
+          : 'Corte de Cabello / Fade'),
       formula: formulaToSave,
       notes: notesToSave,
-      ritual: latestTreatment?.ritual || 'Acabado con navaja y polvos mate',
+      ritual:
+        latestTreatment?.ritual ||
+        (activeVertical === 'nails'
+          ? 'Hidratación de cutícula con aceite de almendras'
+          : activeVertical === 'peluqueria'
+          ? 'Masaje relajante y sellado de brillo'
+          : 'Acabado con navaja y polvos mate'),
       date: new Date().toISOString().split('T')[0],
       timestamp: Date.now(),
     };
@@ -114,9 +142,48 @@ const ClientBentoCard = ({
     setQuickFormula('');
     setQuickNotes('');
     setIsEditingFormula(false);
-    setFeedbackMsg('¡Corte guardado hoy!');
+    setFeedbackMsg(
+      activeVertical === 'nails'
+        ? '¡Diseño de uñas guardado hoy!'
+        : activeVertical === 'peluqueria'
+        ? '¡Fórmula guardada hoy!'
+        : '¡Corte guardado hoy!'
+    );
     setTimeout(() => setFeedbackMsg(''), 2500);
   };
+
+  const flipButtonLabel =
+    activeVertical === 'nails'
+      ? 'Ver diseño'
+      : activeVertical === 'peluqueria'
+      ? 'Ver fórmula'
+      : 'Ver corte';
+
+  const backHeaderLabel =
+    activeVertical === 'nails'
+      ? 'Su diseño habitual de uñas'
+      : activeVertical === 'peluqueria'
+      ? 'Su fórmula de color y cabina'
+      : 'Su corte habitual';
+
+  const backDetailLabel =
+    activeVertical === 'nails'
+      ? 'Forma, talla, sistema y tono:'
+      : activeVertical === 'peluqueria'
+      ? 'Fórmula técnica (Colorimetría / Cabina):'
+      : 'Detalle de máquina y tijera:';
+
+  const repeatButtonLabel = isEditingFormula
+    ? activeVertical === 'nails'
+      ? 'Guardar nuevo diseño hoy'
+      : activeVertical === 'peluqueria'
+      ? 'Guardar nueva fórmula hoy'
+      : 'Guardar nuevo corte hoy'
+    : activeVertical === 'nails'
+    ? '✓ Repetir su diseño hoy'
+    : activeVertical === 'peluqueria'
+    ? '✓ Repetir su fórmula hoy'
+    : '✓ Repetir su corte hoy';
 
   return (
     <div
@@ -135,7 +202,9 @@ const ClientBentoCard = ({
         {/* ================================================================= */}
         <div
           style={{ position: 'absolute' }}
-          className="!absolute inset-0 w-full h-full backface-hidden luxury-card rounded-2xl overflow-hidden border border-[#2A303F] flex flex-col justify-between p-4 sm:p-5 shadow-2xl transition-all duration-300 hover:border-[#10B981]/60 bg-[#12161F]"
+          className={`!absolute inset-0 w-full h-full backface-hidden luxury-card rounded-2xl overflow-hidden border border-[#2A303F] flex flex-col justify-between p-4 sm:p-5 shadow-2xl transition-all duration-300 ${
+            isFemale ? 'hover:border-[#EC4899]/60' : 'hover:border-[#10B981]/60'
+          } bg-[#12161F]`}
         >
           {/* Retrato Completo */}
           {photoUrl ? (
@@ -145,7 +214,11 @@ const ClientBentoCard = ({
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-105"
             />
           ) : (
-            <div className="absolute inset-0 w-full h-full bg-[#161B26] flex items-center justify-center text-[#10B981] font-serif text-6xl font-black opacity-25">
+            <div
+              className={`absolute inset-0 w-full h-full bg-[#161B26] flex items-center justify-center ${
+                isFemale ? 'text-[#EC4899]' : 'text-[#10B981]'
+              } font-serif text-6xl font-black opacity-25`}
+            >
               {initials}
             </div>
           )}
@@ -153,7 +226,7 @@ const ClientBentoCard = ({
           {/* Gradientes para contraste perfecto */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#090C11] via-[#0E1117]/65 to-[#0E1117]/30 pointer-events-none" />
 
-          {/* Fila Superior: Estado del Corte + Bono VIP */}
+          {/* Fila Superior: Estado del Servicio + Bono VIP */}
           <div className="relative z-10 flex items-start justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <span
@@ -162,6 +235,8 @@ const ClientBentoCard = ({
                     ? 'bg-[#EF4444]/85 text-white border-[#FCA5A5]/60'
                     : alert.alertLevel === 'warning'
                     ? 'bg-[#F59E0B]/85 text-[#07090C] border-[#FCD34D]'
+                    : isFemale
+                    ? 'bg-[#101318]/85 text-[#F9A8D4] border-[#EC4899]/50'
                     : 'bg-[#101318]/85 text-[#6EE7B7] border-[#10B981]/50'
                 }`}
               >
@@ -169,7 +244,11 @@ const ClientBentoCard = ({
               </span>
 
               {activeBono ? (
-                <span className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#10B981] text-[#07090C] shadow-md">
+                <span
+                  className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${
+                    isFemale ? 'bg-[#EC4899] text-white' : 'bg-[#10B981] text-[#07090C]'
+                  } shadow-md`}
+                >
                   <Ticket size={13} />
                   <span>
                     Bono: {activeBono.totalSessions - activeBono.usedSessions} libres
@@ -184,14 +263,18 @@ const ClientBentoCard = ({
             </div>
 
             {(isHero || String(client.id) === '3') && (
-              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-[11px] font-black bg-[#10B981] text-[#07090C] uppercase tracking-wider shadow-lg">
+              <span
+                className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-[11px] font-black ${
+                  isFemale ? 'bg-[#EC4899] text-white' : 'bg-[#10B981] text-[#07090C]'
+                } uppercase tracking-wider shadow-lg`}
+              >
                 <Sparkles size={12} />
                 <span>VIP</span>
               </span>
             )}
           </div>
 
-          {/* Fila Inferior: Nombre + Último Corte + Botones Grandes */}
+          {/* Fila Inferior: Nombre + Último Servicio + Botones Grandes */}
           <div className="relative z-10 space-y-3.5">
             <div>
               <h3 className="text-2xl font-serif font-black text-white uppercase tracking-tight drop-shadow-lg leading-tight truncate">
@@ -200,8 +283,16 @@ const ClientBentoCard = ({
 
               <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-[#E5E7EB]">
                 {latestTreatment && (
-                  <span className="flex items-center font-semibold text-[#34D399] truncate max-w-full">
-                    <Scissors size={13} className="mr-1.5 text-[#10B981] shrink-0" />
+                  <span
+                    className={`flex items-center font-semibold ${
+                      isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'
+                    } truncate max-w-full`}
+                  >
+                    {isFemale ? (
+                      <Sparkles size={13} className="mr-1.5 text-[#EC4899] shrink-0" />
+                    ) : (
+                      <Scissors size={13} className="mr-1.5 text-[#10B981] shrink-0" />
+                    )}
                     <span className="truncate">{latestTreatment.name}</span>
                   </span>
                 )}
@@ -216,15 +307,24 @@ const ClientBentoCard = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       soundFx.playClick();
-                      const firstName = (client.name || 'crack').split(' ')[0];
-                      const draft = `¡Qué pasa ${firstName}! 💈 Te escribimos de la barbería. ¿Te guardamos sillón esta semana para repasar el corte? 🔥`;
+                      const firstName = (client.name || 'guapa').split(' ')[0];
+                      const draft =
+                        activeVertical === 'nails'
+                          ? `¡Hola ${firstName}! 💅✨ Te escribimos de CM Salón D’ Campodónico. ¿Te reservamos cita esta semana para tus uñas o manicura?`
+                          : activeVertical === 'peluqueria'
+                          ? `¡Hola ${firstName}! 💇‍♀️✨ Te escribimos del salón. Ya tenemos lista tu fórmula en tu ficha, ¿te reservamos cita esta semana?`
+                          : `¡Qué pasa ${firstName}! 💈 Te escribimos de la barbería. ¿Te guardamos sillón esta semana para repasar el corte? 🔥`;
                       window.open(
                         buildWhatsAppUrl(client.phone, draft),
                         '_blank',
                         'noopener,noreferrer'
                       );
                     }}
-                    className="px-2.5 py-2 min-h-[40px] rounded-xl text-[11px] sm:text-xs font-black bg-[#10B981] hover:bg-[#34D399] text-[#07090C] flex items-center space-x-1 cursor-pointer shrink-0 shadow-md transition-all"
+                    className={`px-2.5 py-2 min-h-[40px] rounded-xl text-[11px] sm:text-xs font-black ${
+                      isFemale
+                        ? 'bg-[#EC4899] hover:bg-[#F472B6] text-white'
+                        : 'bg-[#10B981] hover:bg-[#34D399] text-[#07090C]'
+                    } flex items-center space-x-1 cursor-pointer shrink-0 shadow-md transition-all`}
                     title="Mandar WhatsApp directo"
                   >
                     <Phone size={13} />
@@ -259,7 +359,7 @@ const ClientBentoCard = ({
                       }
                     }}
                     className="p-2 min-h-[40px] min-w-[36px] rounded-xl text-xs font-bold text-[#9CA3AF] hover:text-[#FCA5A5] bg-[#141820]/90 hover:bg-[#EF4444]/20 border border-[#262C3A] hover:border-[#EF4444]/50 transition-all cursor-pointer flex items-center justify-center shrink-0"
-                    title="Borrar ficha del cliente"
+                    title="Borrar ficha"
                     aria-label={`Borrar ficha de ${client.name}`}
                   >
                     <Trash2 size={14} />
@@ -270,30 +370,38 @@ const ClientBentoCard = ({
               <button
                 type="button"
                 onClick={handleFlip}
-                className="px-2.5 sm:px-3.5 py-2 min-h-[40px] rounded-xl text-[11px] sm:text-xs font-bold bg-white text-[#07090C] hover:bg-[#10B981] transition-all flex items-center space-x-1 cursor-pointer shadow-lg shrink-0"
-                title="Girar tarjeta para ver su corte"
+                className={`px-2.5 sm:px-3.5 py-2 min-h-[40px] rounded-xl text-[11px] sm:text-xs font-bold bg-white text-[#07090C] ${
+                  isFemale ? 'hover:bg-[#F472B6] hover:text-white' : 'hover:bg-[#10B981]'
+                } transition-all flex items-center space-x-1 cursor-pointer shadow-lg shrink-0`}
+                title="Girar tarjeta para ver su fórmula"
               >
                 <RotateCw size={13} />
-                <span>Ver corte</span>
+                <span>{flipButtonLabel}</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* ================================================================= */}
-        {/* CARA TRASERA: Su Corte Habitual + Botón Repetir en 1 Toque        */}
+        {/* CARA TRASERA: Su Fórmula / Diseño / Corte + Botón Repetir 1 Toque */}
         {/* ================================================================= */}
         <div
           onClick={(e) => e.stopPropagation()}
           style={{ position: 'absolute' }}
-          className="!absolute inset-0 w-full h-full backface-hidden rotate-y-180 luxury-card rounded-2xl overflow-hidden border border-[#10B981]/50 flex flex-col justify-between p-4 sm:p-5 shadow-2xl bg-[#10141C] cursor-default"
+          className={`!absolute inset-0 w-full h-full backface-hidden rotate-y-180 luxury-card rounded-2xl overflow-hidden border ${
+            isFemale ? 'border-[#EC4899]/50' : 'border-[#10B981]/50'
+          } flex flex-col justify-between p-4 sm:p-5 shadow-2xl bg-[#10141C] cursor-default`}
         >
           {/* Cabecera */}
           <div className="space-y-3 overflow-y-auto max-h-[380px] no-scrollbar pr-0.5">
             <div className="flex items-center justify-between pb-3 border-b border-[#252A36]">
               <div className="min-w-0">
-                <span className="text-[11px] font-bold text-[#34D399] uppercase tracking-wider block">
-                  Su corte habitual
+                <span
+                  className={`text-[11px] font-bold ${
+                    isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'
+                  } uppercase tracking-wider block`}
+                >
+                  {backHeaderLabel}
                 </span>
                 <h4 className="text-lg font-serif font-black text-white uppercase tracking-tight truncate">
                   {client.name}
@@ -303,7 +411,11 @@ const ClientBentoCard = ({
               <button
                 type="button"
                 onClick={handleFlip}
-                className="px-3 py-2 rounded-xl bg-[#181D27] hover:bg-[#10B981] text-white hover:text-[#07090C] border border-[#262C3A] text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shrink-0"
+                className={`px-3 py-2 rounded-xl bg-[#181D27] ${
+                  isFemale
+                    ? 'hover:bg-[#EC4899] text-white'
+                    : 'hover:bg-[#10B981] text-white hover:text-[#07090C]'
+                } border border-[#262C3A] text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shrink-0`}
                 title="Volver a la foto"
               >
                 <RotateCcw size={14} />
@@ -311,13 +423,17 @@ const ClientBentoCard = ({
               </button>
             </div>
 
-            {/* Pasos de su corte en pastillas claras */}
+            {/* Pasos de su receta/fórmula en pastillas claras */}
             <div>
               <div className="flex flex-wrap gap-1.5 mb-2.5">
                 {formulaSteps.map((step, i) => (
                   <span
                     key={i}
-                    className="px-2.5 py-1 rounded-lg bg-[#10B981]/15 border border-[#10B981]/40 text-xs font-bold text-[#34D399]"
+                    className={`px-2.5 py-1 rounded-lg ${
+                      isFemale
+                        ? 'bg-[#EC4899]/15 border border-[#EC4899]/40 text-[#F9A8D4]'
+                        : 'bg-[#10B981]/15 border border-[#10B981]/40 text-[#34D399]'
+                    } text-xs font-bold`}
                   >
                     {step}
                   </span>
@@ -326,13 +442,13 @@ const ClientBentoCard = ({
 
               <div className="p-3 rounded-xl bg-[#0A0C0F]/90 border border-[#262C3A] text-xs text-[#E5E7EB] leading-relaxed">
                 <span className="text-[#9CA3AF] font-semibold block text-[11px] mb-0.5">
-                  Detalle de máquina y tijera:
+                  {backDetailLabel}
                 </span>
                 {currentFormula}
               </div>
             </div>
 
-            {/* Aviso importante del cliente (remolinos / piel sensible) */}
+            {/* Aviso importante del cliente (cutícula / cuero cabelludo / piel sensible) */}
             {(client.notes || client.allergies) && (
               <div className="p-3 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-xs space-y-1">
                 <div className="flex items-center space-x-1.5 text-[#FBBF24] font-bold">
@@ -344,13 +460,17 @@ const ClientBentoCard = ({
                 )}
                 {client.allergies && (
                   <p className="text-[#FCD34D] font-semibold">
-                    Piel: {client.allergies}
+                    {activeVertical === 'nails'
+                      ? `Cutícula / Lámpara: ${client.allergies}`
+                      : activeVertical === 'peluqueria'
+                      ? `Sensibilidad / Test: ${client.allergies}`
+                      : `Piel: ${client.allergies}`}
                   </p>
                 )}
               </div>
             )}
 
-            {/* Formulario opcional solo si quiere cambiar el corte habitual */}
+            {/* Formulario opcional solo si quiere cambiar la fórmula habitual */}
             {isEditingFormula && (
               <div className="space-y-2 pt-1 animate-in fade-in">
                 <input
@@ -359,7 +479,13 @@ const ClientBentoCard = ({
                   onChange={(e) => setQuickFormula(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
-                  placeholder="Nueva fórmula (ej. #0.5 Fade + Barba)..."
+                  placeholder={
+                    activeVertical === 'nails'
+                      ? 'Nuevo diseño (ej. Almendra Talla M · Acrílico Cover Pink)...'
+                      : activeVertical === 'peluqueria'
+                      ? 'Nueva fórmula (ej. Raíz 7.1 20vol + Matiz Gloss 9.21)...'
+                      : 'Nueva fórmula (ej. #0.5 Fade + Barba)...'
+                  }
                   className="w-full px-3 py-2 bg-[#0A0C0F] border border-[#10B981]/50 rounded-xl text-xs text-white placeholder-[#6B7280] focus:outline-none"
                 />
                 <input
@@ -375,10 +501,14 @@ const ClientBentoCard = ({
             )}
           </div>
 
-          {/* Zona Inferior: Botón 1-Toque "Repetir Corte Hoy" (Cero escritura) */}
+          {/* Zona Inferior: Botón 1-Toque "Repetir Hoy" (Cero escritura) */}
           <div className="pt-3 border-t border-[#252A36] space-y-2 shrink-0">
             {feedbackMsg ? (
-              <div className="w-full py-3 rounded-xl bg-[#10B981] text-[#07090C] text-xs font-black uppercase flex items-center justify-center space-x-2">
+              <div
+                className={`w-full py-3 rounded-xl ${
+                  isFemale ? 'bg-[#EC4899] text-white' : 'bg-[#10B981] text-[#07090C]'
+                } text-xs font-black uppercase flex items-center justify-center space-x-2`}
+              >
                 <CheckCircle2 size={16} />
                 <span>{feedbackMsg}</span>
               </div>
@@ -388,12 +518,8 @@ const ClientBentoCard = ({
                 onClick={handleSaveQuickSession}
                 className="btn-author w-full !py-3 text-xs cursor-pointer"
               >
-                <Scissors size={15} />
-                <span>
-                  {isEditingFormula
-                    ? 'Guardar nuevo corte hoy'
-                    : '✓ Repetir su corte hoy'}
-                </span>
+                {isFemale ? <Sparkles size={15} /> : <Scissors size={15} />}
+                <span>{repeatButtonLabel}</span>
               </button>
             )}
 
@@ -408,7 +534,15 @@ const ClientBentoCard = ({
                 className="text-[#9CA3AF] hover:text-white flex items-center space-x-1 cursor-pointer"
               >
                 <Edit3 size={12} />
-                <span>{isEditingFormula ? 'Cancelar edición' : 'Cambiar corte'}</span>
+                <span>
+                  {isEditingFormula
+                    ? 'Cancelar edición'
+                    : activeVertical === 'nails'
+                    ? 'Cambiar diseño'
+                    : activeVertical === 'peluqueria'
+                    ? 'Cambiar fórmula'
+                    : 'Cambiar corte'}
+                </span>
               </button>
 
               <button
@@ -418,7 +552,9 @@ const ClientBentoCard = ({
                   soundFx.playClick();
                   navigate(`/clients/${client.id}`);
                 }}
-                className="text-[#34D399] hover:text-white font-bold flex items-center cursor-pointer"
+                className={`${
+                  isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'
+                } hover:text-white font-bold flex items-center cursor-pointer`}
               >
                 <span>Ver historial completo</span>
                 <ChevronRight size={14} />

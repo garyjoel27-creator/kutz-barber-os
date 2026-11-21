@@ -92,12 +92,13 @@ export function calculateRetentionInsights(client, referenceDate = Date.now()) {
         : (referenceDate ? new Date(referenceDate).getTime() : Date.now()));
 
   // 1. Evaluación de Toxina Botulínica / Botox / Neuromodulador
-  // Términos: botox, toxina, neuromodulador, frente, patas de gallo, glabela
+  // Términos: botox, toxina, neuromodulador, frente, patas de gallo, glabela (excluyendo botox capilar)
   const botoxKeywords = ['botox', 'toxina', 'neuromodulador', 'frente', 'patas de gallo', 'glabela'];
   const botoxTreatments = client.treatments
     .filter(t => {
       const normName = normalizeText(t.name);
       const normNotes = normalizeText(t.notes);
+      if (normName.includes('botox capilar') || normNotes.includes('botox capilar')) return false;
       return botoxKeywords.some(kw => normName.includes(kw) || normNotes.includes(kw));
     })
     .sort((a, b) => {
@@ -143,12 +144,13 @@ export function calculateRetentionInsights(client, referenceDate = Date.now()) {
   }
 
   // 2. Evaluación de Rellenos Dérmicos / Ácido Hialurónico
-  // Términos: filler, hialurónico, ácido hialuronico, labios, relleno, pómulos, ojeras
+  // Términos: filler, hialurónico, ácido hialuronico, labios, relleno, pómulos, ojeras (excluyendo relleno acrílico de uñas)
   const fillerKeywords = ['filler', 'hialuronico', 'acido hialuronico', 'labios', 'relleno', 'pomulos', 'ojeras'];
   const fillerTreatments = client.treatments
     .filter(t => {
       const normName = normalizeText(t.name);
       const normNotes = normalizeText(t.notes);
+      if (normName.includes('relleno acrilico') || normNotes.includes('relleno acrilico') || normName.includes('acrilic')) return false;
       return fillerKeywords.some(kw => normName.includes(kw) || normNotes.includes(kw));
     })
     .sort((a, b) => {
@@ -193,10 +195,11 @@ export function calculateRetentionInsights(client, referenceDate = Date.now()) {
     }
   }
 
-  // 3. Evaluación Estética: Mirada (Pestañas/Cejas) y Manicura/Uñas (Ciclo 21 días)
+  // 3. Evaluación Estética: Mirada (Pestañas/Cejas) y Manicura/Uñas Acrílicas (Ciclo 18-21 días)
   const nailsLashesKeywords = [
     'manicura', 'semipermanente', 'acrigel', 'lifting de pestanas', 
-    'extension de pestanas', 'laminado de cejas', 'microblading'
+    'extension de pestanas', 'laminado de cejas', 'microblading',
+    'unas acrilicas', 'relleno acrilico', 'pedicura', 'base rubber'
   ];
   const nailsLashesTreatments = client.treatments
     .filter(t => {
@@ -210,40 +213,43 @@ export function calculateRetentionInsights(client, referenceDate = Date.now()) {
     const latest = nailsLashesTreatments[0];
     const treatmentTime = parseTreatmentDate(latest.date, latest.timestamp).getTime();
     const elapsedDays = Math.max(0, Math.floor((refTime - treatmentTime) / (1000 * 60 * 60 * 24)));
-    const thresholdDays = 21; // Ciclo de 3 semanas para uñas/pestañas/cejas
+    const thresholdDays = 18; // Ciclo de 18-21 días para relleno de uñas/pestañas/cejas
 
     if (elapsedDays >= thresholdDays) {
-      const urgency = elapsedDays >= 28 ? 'high' : 'upcoming';
-      const statusLabel = elapsedDays >= 28 ? 'Mantenimiento Prioritario' : 'Ciclo 3 Semanas';
-      const message = `Han transcurrido ${elapsedDays} días desde el servicio de ${latest.name}. Por el crecimiento natural de la lámina ungueal / ciclo piloso de pestañas y cejas, es el momento óptimo para realizar el mantenimiento o relleno.`;
-      const whatsappDraft = `Hola ${client.name || ''} ✨ Te escribimos desde nuestro salón en LuminaDesk. Ya han pasado ${elapsedDays} días desde tu sesión de ${latest.name} y toca tu mantenimiento para que sigas luciéndolo impecable. ¿Te reservamos hueco esta semana?`;
+      const urgency = elapsedDays >= 24 ? 'high' : 'upcoming';
+      const statusLabel = elapsedDays >= 24 ? 'Relleno Prioritario' : 'Ciclo 3 Semanas';
+      const message = `Han transcurrido ${elapsedDays} días desde el servicio de ${latest.name}. Por el crecimiento natural de la uña (~2.5 mm) / ciclo de pestañas y cejas, es el momento óptimo para realizar el relleno o mantenimiento y evitar levantamientos.`;
+      const whatsappDraft = `Hola ${client.name || ''} 💅✨ Te escribimos desde CM Salón D’ Campodónico. Ya han pasado ${elapsedDays} días desde tus ${latest.name} y toca tu relleno/mantenimiento para que sigas luciéndolas impecables. Tenemos tu diseño y talla guardados en tu ficha, ¿te reservamos cita esta semana?`;
 
       insights.push({
         id: `retention-estetica-mirada-${client.id}-${latest.id}`,
         type: 'estetica_mirada',
-        title: 'Mantenimiento de Mirada / Manicura (Ciclo 21 días)',
+        title: 'Relleno de Uñas / Mantenimiento (Ciclo 18-21 días)',
         treatmentName: latest.name,
         lastDate: latest.date,
         elapsedDays,
         thresholdDays,
         urgency,
-        urgencyLevel: elapsedDays >= 28 ? 'alta' : 'sugerida',
+        urgencyLevel: elapsedDays >= 24 ? 'alta' : 'sugerida',
         statusLabel,
         message,
-        suggestedAction: 'Agendar Mantenimiento',
-        suggestedTreatmentName: `Mantenimiento ${latest.name}`,
+        suggestedAction: 'Agendar Relleno / Manicura',
+        suggestedTreatmentName: `Relleno ${latest.name}`,
         suggestedActionObj: {
           type: 'rebook',
-          treatmentName: `Mantenimiento ${latest.name}`,
-          actionLabel: 'Agendar Mantenimiento'
+          treatmentName: `Relleno ${latest.name}`,
+          actionLabel: 'Agendar Relleno / Manicura'
         },
         whatsappDraft
       });
     }
   }
 
-  // 4. Evaluación Estética Cabina: Láser Diodo, Indiba, Radiofrecuencia, Dermapen (Ciclo 35 días)
-  const cabinKeywords = ['laser diodo', 'radiofrecuencia indiba', 'indiba', 'maderoterapia', 'dermapen'];
+  // 4. Evaluación Estética Cabina: Higiene Facial, Radiofrecuencia, Láser Diodo, Indiba, Dermapen (Ciclo 28-35 días)
+  const cabinKeywords = [
+    'laser diodo', 'radiofrecuencia indiba', 'indiba', 'maderoterapia', 'dermapen',
+    'higiene facial profunda', 'radiofrecuencia', 'rejuvenecimiento facial', 'ultrasonidos', 'drenaje corporal'
+  ];
   const cabinTreatments = client.treatments
     .filter(t => {
       const normName = normalizeText(t.name);
@@ -256,24 +262,24 @@ export function calculateRetentionInsights(client, referenceDate = Date.now()) {
     const latest = cabinTreatments[0];
     const treatmentTime = parseTreatmentDate(latest.date, latest.timestamp).getTime();
     const elapsedDays = Math.max(0, Math.floor((refTime - treatmentTime) / (1000 * 60 * 60 * 24)));
-    const thresholdDays = 35; // Ciclo de 5 semanas para sesiones de cabina/láser
+    const thresholdDays = 28; // Ciclo de 4-5 semanas para sesiones de cabina facial/corporal
 
     if (elapsedDays >= thresholdDays) {
-      const urgency = elapsedDays >= 45 ? 'high' : 'upcoming';
-      const statusLabel = elapsedDays >= 45 ? 'Siguiente Sesión' : 'Ventana de Cabina';
-      const message = `Han transcurrido ${elapsedDays} días desde la sesión de ${latest.name}. Para mantener la eficacia acumulativa del protocolo en cabina (fase anágena / síntesis de colágeno), se recomienda programar la siguiente sesión.`;
-      const whatsappDraft = `Hola ${client.name || ''} ✨ Te saludamos desde cabina. Han pasado ${elapsedDays} días desde tu última sesión de ${latest.name}. Para no perder el ritmo de tu protocolo y maximizar resultados, ¿agendamos tu siguiente sesión esta semana?`;
+      const urgency = elapsedDays >= 40 ? 'high' : 'upcoming';
+      const statusLabel = elapsedDays >= 40 ? 'Siguiente Sesión' : 'Ventana de Cabina';
+      const message = `Han transcurrido ${elapsedDays} días desde la sesión de ${latest.name}. Para mantener la luminosidad, oxigenación y síntesis de colágeno del protocolo en cabina, se recomienda programar la siguiente sesión.`;
+      const whatsappDraft = `Hola ${client.name || ''} ✨ Te saludamos desde cabina estética. Han pasado ${elapsedDays} días desde tu última sesión de ${latest.name}. Para mantener la piel radiante y continuar tu protocolo, ¿agendamos tu próxima cita esta semana?`;
 
       insights.push({
         id: `retention-estetica-cabina-${client.id}-${latest.id}`,
         type: 'estetica_cabina',
-        title: 'Continuidad de Protocolo en Cabina',
+        title: 'Continuidad de Protocolo Facial / Corporal en Cabina',
         treatmentName: latest.name,
         lastDate: latest.date,
         elapsedDays,
         thresholdDays,
         urgency,
-        urgencyLevel: elapsedDays >= 45 ? 'alta' : 'sugerida',
+        urgencyLevel: elapsedDays >= 40 ? 'alta' : 'sugerida',
         statusLabel,
         message,
         suggestedAction: 'Agendar Sesión Cabina',
@@ -288,10 +294,10 @@ export function calculateRetentionInsights(client, referenceDate = Date.now()) {
     }
   }
 
-  // 5. Evaluación Peluquería & Colorimetría: Raíz / Tinte / Balayage / Keratina (Ciclo 28-45 días)
+  // 5. Evaluación Peluquería & Colorimetría: Raíz / Tinte / Balayage / Keratina / Botox Capilar (Ciclo 28-45 días)
   const hairKeywords = [
-    'coloracion raiz', 'cobertura de canas', 'retoque de raiz', 'tinte inoa', 
-    'balayage', 'babylights', 'matiz gloss', 'alisado organico', 'keratina'
+    'coloracion raiz', 'cobertura de canas', 'retoque de raiz', 'tinte inoa', 'tinte de raiz',
+    'balayage', 'babylights', 'matiz gloss', 'alisado organico', 'keratina', 'botox capilar', 'brushing'
   ];
   const hairTreatments = client.treatments
     .filter(t => {
@@ -425,6 +431,121 @@ export function getFadeAlert(client, referenceDate = new Date()) {
         : (referenceDate ? new Date(referenceDate).getTime() : Date.now()));
   const treatments = Array.isArray(client.treatments) ? client.treatments : [];
 
+  // 1. Detectar servicios de Uñas, Manicura & Pedicura (Ciclo relleno 18-21 días)
+  const nailsKeywords = ['acrilic', 'uñas', 'unas', 'manicura', 'semipermanente', 'pedicura', 'base rubber', 'baby boomer', 'almendra'];
+  const nailsServices = treatments.filter(t => {
+    const name = normalizeText(t.name || '');
+    const notes = normalizeText(t.notes || '');
+    const formula = normalizeText(t.formula || '');
+    return nailsKeywords.some(kw => {
+      const cleanKw = normalizeText(kw);
+      return name.includes(cleanKw) || notes.includes(cleanKw) || formula.includes(cleanKw);
+    });
+  }).sort((a, b) => {
+    const tA = parseTreatmentDate(a.date, a.timestamp).getTime();
+    const tB = parseTreatmentDate(b.date, b.timestamp).getTime();
+    return tB - tA;
+  });
+
+  if (nailsServices.length > 0) {
+    const latest = nailsServices[0];
+    const lastTime = parseTreatmentDate(latest.date, latest.timestamp).getTime();
+    const elapsedDays = Math.max(0, Math.floor((refTime - lastTime) / (1000 * 60 * 60 * 24)));
+    if (elapsedDays >= 21) {
+      return {
+        alertLevel: 'urgent',
+        label: `💅 Relleno Vencido (+${elapsedDays}d)`,
+        daysRemaining: 0,
+        elapsedDays,
+        daysElapsed: elapsedDays,
+        badgeColor: '#EC4899',
+        requiresRetouch: true
+      };
+    } else if (elapsedDays >= 15) {
+      const remaining = 21 - elapsedDays;
+      return {
+        alertLevel: 'warning',
+        label: remaining <= 3 ? `💅 Relleno en ${remaining} días` : `✨ Ventana Relleno (${remaining}d)`,
+        daysRemaining: remaining,
+        elapsedDays,
+        daysElapsed: elapsedDays,
+        badgeColor: '#F59E0B',
+        requiresRetouch: true
+      };
+    } else {
+      const remaining = 15 - elapsedDays;
+      return {
+        alertLevel: 'normal',
+        label: '💅 Uñas recién hechas',
+        daysRemaining: remaining,
+        elapsedDays,
+        daysElapsed: elapsedDays,
+        badgeColor: '#EC4899',
+        requiresRetouch: false
+      };
+    }
+  }
+
+  // 2. Detectar servicios de Peluquería Femenina & Estética en Cabina (Sin uñas, Ciclo 21-28 días)
+  const salonEsteticaKeywords = [
+    'balayage', 'babylights', 'tinte', 'raiz', 'coloracion', 'keratina', 'botox capilar',
+    'brushing', 'peinado', 'higiene facial', 'radiofrecuencia', 'rejuvenecimiento',
+    'peeling', 'masaje', 'drenaje', 'ultrasonidos', 'lifting de pestanas'
+  ];
+  const salonServices = treatments.filter(t => {
+    const name = normalizeText(t.name || '');
+    const notes = normalizeText(t.notes || '');
+    const formula = normalizeText(t.formula || '');
+    return salonEsteticaKeywords.some(kw => {
+      const cleanKw = normalizeText(kw);
+      return name.includes(cleanKw) || notes.includes(cleanKw) || formula.includes(cleanKw);
+    });
+  }).sort((a, b) => {
+    const tA = parseTreatmentDate(a.date, a.timestamp).getTime();
+    const tB = parseTreatmentDate(b.date, b.timestamp).getTime();
+    return tB - tA;
+  });
+
+  if (salonServices.length > 0) {
+    const latest = salonServices[0];
+    const lastTime = parseTreatmentDate(latest.date, latest.timestamp).getTime();
+    const elapsedDays = Math.max(0, Math.floor((refTime - lastTime) / (1000 * 60 * 60 * 24)));
+    if (elapsedDays >= 28) {
+      return {
+        alertLevel: 'urgent',
+        label: `✨ Retoque Raíz/Cabina (+${elapsedDays}d)`,
+        daysRemaining: 0,
+        elapsedDays,
+        daysElapsed: elapsedDays,
+        badgeColor: '#EC4899',
+        requiresRetouch: true
+      };
+    } else if (elapsedDays >= 18) {
+      const remaining = 28 - elapsedDays;
+      return {
+        alertLevel: 'warning',
+        label: remaining <= 3 ? `✨ Retoque en ${remaining} días` : `💆‍♀️ Ventana Retoque (${remaining}d)`,
+        daysRemaining: remaining,
+        elapsedDays,
+        daysElapsed: elapsedDays,
+        badgeColor: '#F59E0B',
+        requiresRetouch: true
+      };
+    } else {
+      const remaining = 18 - elapsedDays;
+      return {
+        alertLevel: 'normal',
+        label: '✨ Color y Piel al día',
+        daysRemaining: remaining,
+        elapsedDays,
+        daysElapsed: elapsedDays,
+        badgeColor: '#EC4899',
+        requiresRetouch: false
+      };
+    }
+  }
+
+  // 3. Barbería Urbana (Fade, Taper, Corte & Barba — Ciclo 15-21 días)
   const barberKeywords = ['fade', 'degradado', 'taper', 'mullet', 'crop', 'barba', 'navaja', 'corte', 'ritual', 'shaver'];
   const barberServices = treatments.filter(t => {
     const name = (t.name || '').toLowerCase();
@@ -489,7 +610,7 @@ export function getFadeAlert(client, referenceDate = new Date()) {
 }
 
 /**
- * Perfiles de Especialidad del Negocio (Barbería Urbana por defecto + modos compatibles)
+ * Perfiles de Especialidad del Negocio (Barbería Urbana por defecto + Uñas & Manicura + Peluquería & Estética)
  */
 export const BUSINESS_MODES = {
   barber: {
@@ -521,63 +642,95 @@ export const BUSINESS_MODES = {
     rgpdCustodyText: 'Durante relación activa con la barbería (Borrado inmediato disponible)',
     rgpdTreatmentClause: 'Autorizo la apertura de mi ficha de cliente en la barbería, el registro de notas sobre sensibilidad dérmica al afeitado o productos capilares, y la realización de los servicios de corte, barbería y cuidado masculino solicitados.'
   },
+  nails: {
+    id: 'nails',
+    shortName: 'Uñas, Manicura & Pedicura',
+    badge: "CM Salón D’ Campodónico · Nails & Beauty",
+    heroTitle: 'Panel de Nail Bar, Manicura & Pedicura Spa',
+    heroSubtitle: 'Recetario exacto de formas (Almendra/Coffin/Cuadrada), tallas S/M/L, bases acrílicas/rubber, tonos, alertas de relleno 18-21 días y bonos VIP.',
+    clientSingular: 'Clienta',
+    clientPlural: 'Clientas',
+    directoryTitle: 'Directorio de Clientas & Diseño de Uñas 3D',
+    sessionButtonLabel: 'Registrar Uñas / Diseño',
+    sessionModalTitle: 'Nuevo Servicio de Uñas, Manicura o Pedicura',
+    formulaLabel: 'Fórmula de Uñas (Forma, Talla S/M/L, Sistema Acrílico/Rubber y Color/Efecto)',
+    formulaPlaceholder: 'Ej. Forma Almendra · Talla M · Relleno Acrílico Cover Pink → Efecto Chrome Pearl / Baby Boomer · Fresa llama suave en cutícula...',
+    allergyLabel: 'Sensibilidad en Cutícula, Lámpara UV/LED o Alergia a Acrilatos / HEMA',
+    allergyPlaceholder: 'Ej. Cutícula muy fina (bajas RPM), alergia a HEMA (usar base HEMA-free), usar modo Low Heat en lámpara LED, onicofagia...',
+    notesLabel: 'Largo Preferido, Forma de Lámina Ungueal & Gustos de la Clienta',
+    notesPlaceholder: 'Ej. Le gusta forma Almendra estilizada en Talla M. Crecimiento rápido (relleno cada 18 días). Toma café con leche de avena...',
+    quickTreatments: [
+      'Uñas acrílicas Talla S',
+      'Uñas acrílicas Talla M/L',
+      'Relleno acrílico',
+      'Manicura semipermanente con refuerzo',
+      'Manicura / Limpieza tradicional',
+      'Pedicura completa & Spa',
+      'Higiene facial profunda'
+    ],
+    rgpdBadge: 'RGPD Alergias Acrilatos + Reels',
+    rgpdCustodyText: 'Durante relación activa con el salón (Derecho de supresión inmediato disponible)',
+    rgpdTreatmentClause: 'Autorizo la apertura de mi ficha técnica de uñas y estética, el registro de sensibilidades en cutícula o alergias a acrilatos/gel (Art. 9 RGPD), y la realización de los servicios de manicura, uñas esculpidas, pedicura o cuidado facial solicitados.'
+  },
   estetica: {
     id: 'estetica',
     shortName: 'Estética & Cabina',
     badge: 'Centro de Estética Avanzada',
     heroTitle: 'Panel de Cabina & Recepción Estética',
-    heroSubtitle: 'Gestión integral de protocolos faciales, corporales, láser, diseño de mirada, uñas y evolución visual.',
+    heroSubtitle: 'Gestión integral de protocolos faciales, corporales, radiofrecuencia, diseño de mirada y evolución visual.',
     clientSingular: 'Clienta',
     clientPlural: 'Clientas',
     directoryTitle: 'Directorio de Clientas & Cabina',
     sessionButtonLabel: 'Registrar Sesión en Cabina',
     sessionModalTitle: 'Nueva Sesión de Estética',
-    formulaLabel: 'Parámetros Técnicos / Activos / Tono',
-    formulaPlaceholder: 'Ej. Láser Diodo 18J/cm² (Fototipo III) | Lifting pestañas molde M + Tinte negro | Esmalte Semipermanente Nude #04...',
-    allergyLabel: 'Sensibilidades, Alergias o Contraindicaciones',
-    allergyPlaceholder: 'Ej. Piel reactiva/rosácea, alergia a acrilatos (uñas), cianoacrilato (pegamento pestañas), cera caliente, embarazo...',
+    formulaLabel: 'Parámetros Técnicos / Activos / Protocolo de Cabina',
+    formulaPlaceholder: 'Ej. Higiene Facial + Ultrasonidos → Radiofrecuencia 40°C (20 min) + Vial Ácido Hialurónico | Lifting pestañas molde M...',
+    allergyLabel: 'Sensibilidades, Alergias o Contraindicaciones en Piel',
+    allergyPlaceholder: 'Ej. Piel reactiva/rosácea, alergia a ácidos glicólicos, cianoacrilato (pegamento pestañas), embarazo...',
     notesLabel: 'Rutina en Casa (Home Care) & Preferencias de Cabina',
     notesPlaceholder: 'Ej. Usa limpiador suave + SPF 50. Prefiere camilla templada, música relajante e infusión de frutos rojos...',
     quickTreatments: [
-      'Lifting de Pestañas & Laminado de Cejas',
-      'Láser Diodo Alta Potencia',
-      'Radiofrecuencia Indiba Facial',
-      'Manicura Rusa Semipermanente',
-      'Maderoterapia & Presoterapia Corporal',
-      'Dermapen Microneedling con Vitaminas'
+      'Higiene Facial Profunda + Ultrasonidos',
+      'Radiofrecuencia / Rejuvenecimiento Facial',
+      'Peeling Luminosidad & Vitaminas',
+      'Masaje Relajante / Drenaje Corporal',
+      'Diseño de Cejas & Lifting de Pestañas'
     ],
     rgpdBadge: 'Art. 9 RGPD + Imagen Redes',
     rgpdCustodyText: 'Durante relación activa (Derecho de supresión inmediato disponible)',
-    rgpdTreatmentClause: 'Autorizo la apertura de mi ficha estética, el registro de alergias o sensibilidades cutáneas (Art. 9 RGPD) y la aplicación de los tratamientos de estética avanzada, aparatología, mirada o cuidado ungueal solicitados.'
+    rgpdTreatmentClause: 'Autorizo la apertura de mi ficha estética, el registro de alergias o sensibilidades cutáneas (Art. 9 RGPD) y la aplicación de los tratamientos de estética avanzada, aparatología o mirada solicitados.'
   },
   peluqueria: {
     id: 'peluqueria',
-    shortName: 'Peluquería & Color',
-    badge: 'Salón de Peluquería & Colorimetría',
-    heroTitle: 'Panel de Salón, Tocador & Colorimetría',
-    heroSubtitle: 'Recetario exacto de fórmulas de color al gramo, oxidantes, historial de mechas, tratamientos capilares y evolución.',
+    shortName: 'Peluquería & Estética (Sin Uñas)',
+    badge: 'Salón de Peluquería, Colorimetría & Estética Facial',
+    heroTitle: 'Panel de Peluquería, Colorimetría & Cabina Estética',
+    heroSubtitle: 'Recetario exacto de fórmulas de tinte al gramo, mechas Balayage, tratamientos de keratina y protocolos faciales y corporales en cabina.',
     clientSingular: 'Clienta',
     clientPlural: 'Clientas',
-    directoryTitle: 'Directorio de Clientas & Pasaporte de Color',
+    directoryTitle: 'Directorio de Clientas · Pasaporte de Color & Cabina',
     sessionButtonLabel: 'Registrar Servicio / Fórmula',
-    sessionModalTitle: 'Nuevo Servicio de Peluquería & Color',
-    formulaLabel: 'Receta de Colorimetría / Mezcla Exacta (Gramos, Volúmenes y Tiempo)',
-    formulaPlaceholder: 'Ej. Raíz: 30g Inoa 6.1 + 15g 6.0 (Ox. 20 vol, 35 min) | Medios/Puntas: Gloss Dialight 9.12 + 10.21 (Ox. 6 vol, 15 min) + Olaplex Nº1...',
-    allergyLabel: 'Alergias Capilares (Test PPD 48h) & Cuero Cabelludo',
-    allergyPlaceholder: 'Ej. Alergia a PPD (parafenilendiamina), sensibilidad al amoníaco, cuero cabelludo sensible/descamación, test de alergia 48h superado...',
-    notesLabel: 'Diagnóstico de Fibra Capilar & Productos en Casa',
-    notesPlaceholder: 'Ej. Porosidad media-alta en puntas, base natural altura 5. Lleva a casa Champú Bain Lumière y Mascarilla Ácida...',
+    sessionModalTitle: 'Nuevo Servicio de Peluquería o Cabina Estética',
+    formulaLabel: 'Fórmula Técnica de Colorimetría / Cabina (Gramos, Volúmenes, Activos y Tiempo)',
+    formulaPlaceholder: 'Ej. Raíz: 30g Tinte Orgánico 7.1 + 15g 8.3 (Ox. 20 vol, 35 min) → Matiz Gloss 9.21 + Olaplex Nº1 | Cabina: Radiofrecuencia Facial + Vitamina C...',
+    allergyLabel: 'Alergias Capilares (Test PPD 48h), Cuero Cabelludo o Sensibilidad Facial',
+    allergyPlaceholder: 'Ej. Alergia a PPD/amoníaco, cuero cabelludo sensible, piel con rosácea en mejillas, test de sensibilidad 48h superado...',
+    notesLabel: 'Diagnóstico de Fibra Capilar, Tipo de Piel & Rutina en Casa',
+    notesPlaceholder: 'Ej. Base natural altura 6, porosidad media en puntas. En cabina prefiere camilla templada. Usa champú sin sulfatos y sérum hialurónico...',
     quickTreatments: [
-      'Balayage de Autor & Matiz Gloss',
-      'Coloración Raíz (Cobertura de Canas)',
-      'Alisado Orgánico / Keratina',
-      'Babylights & Contorno Iluminado',
-      'Tratamiento Bótox Capilar Profundo',
-      'Corte de Visagismo & Brushing'
+      'Corte y Peinado / Brushing',
+      'Color / Tinte de Raíz Orgánico',
+      'Mechas Balayage / Babylights + Matiz',
+      'Tratamiento Hidratación / Keratina / Botox Capilar',
+      'Higiene Facial Profunda + Ultrasonidos',
+      'Radiofrecuencia / Rejuvenecimiento Facial',
+      'Peeling Luminosidad & Vitaminas',
+      'Masaje Relajante / Drenaje Corporal',
+      'Diseño de Cejas & Lifting de Pestañas'
     ],
-    rgpdBadge: 'RGPD Test Alergia PPD + Imagen',
+    rgpdBadge: 'RGPD Test Alergia PPD + Cabina',
     rgpdCustodyText: 'Durante relación activa (Derecho de supresión inmediato disponible)',
-    rgpdTreatmentClause: 'Autorizo la apertura de mi ficha técnica capilar, el registro de pruebas de sensibilidad/alergia a tintes (PPD / Art. 9 RGPD) y la realización de los servicios de peluquería y colorimetría solicitados.'
+    rgpdTreatmentClause: 'Autorizo la apertura de mi ficha técnica de peluquería y estética, el registro de pruebas de sensibilidad a tintes o cosméticos (Art. 9 RGPD) y la realización de los servicios capilares, faciales o corporales solicitados.'
   },
   clinica: {
     id: 'clinica',
@@ -792,6 +945,350 @@ export const INITIAL_BARBER_CLIENTS = [
   }
 ];
 
+export const INITIAL_NAILS_CLIENTS = [
+  {
+    id: '1',
+    name: 'Valeria Betancor',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600',
+    photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600',
+    phone: '+34 638 877 945',
+    email: 'valeria.betancor@ejemplo.com',
+    allergies: 'Cutícula fina y sensible en dedos anulares. Usar fresa llama aro rojo a bajas RPM y primer sin ácido (HEMA-Free).',
+    notes: 'Le encanta la forma Almendra estilizada en Talla M y tonos Milky / Baby Boomer. Pide café con leche de avena.',
+    lastVisit: '04 Oct 2026',
+    treatment: 'Uñas acrílicas Talla M/L + Baby Boomer',
+    bonos: [
+      {
+        id: 'bn-101',
+        name: 'Bono Nails VIP: 4 Rellenos Acrílicos + Hidratación',
+        totalSessions: 4,
+        usedSessions: 3,
+        price: '125€',
+        notes: 'Mantenimiento cada 21 días con aceite de cutículas y limado estructural.',
+        createdAt: '2026-08-10',
+        status: 'active'
+      }
+    ],
+    treatments: [
+      {
+        id: 401,
+        date: '04 Oct 2026',
+        timestamp: new Date('2026-10-04T16:30:00Z').getTime(),
+        name: 'Uñas acrílicas Talla M/L',
+        formula: 'Forma Almendra · Talla M · Acrílico Cover Pink + Milky White (Baby Boomer) · Top Coat Efecto Glazed · Torno ruso suave',
+        notes: 'Esculpido con molde sin escalón. Sellado perfecto en zona de cutícula con fresa diamante.',
+        ritual: 'Exfoliación de manos con azúcar de rosas + aceite de almendras',
+        photos: {
+          before: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=80&w=800',
+          after: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&q=80&w=800'
+        }
+      }
+    ],
+    consent: {
+      signed: true,
+      signedAt: '2026-10-04T16:20:00Z',
+      formattedDate: '04 Oct 2026, 16:20',
+      permissions: {
+        treatment: true,
+        photosPrivate: true,
+        photosMarketing: true,
+        communications: true
+      },
+      legalNoticeVersion: 'RGPD-2026-v2.1',
+      legalCustodian: "CM Salón D’ Campodónico · Nails & Beauty"
+    }
+  },
+  {
+    id: '2',
+    name: 'Lucía Perdomo',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600',
+    photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600',
+    phone: '+34 628 441 122',
+    email: 'lucia.perdomo@ejemplo.com',
+    allergies: 'Sin alergias a acrilatos. Lámina ungueal fina en índices: reforzar siempre ápice con Base Rubber.',
+    notes: 'Prefiere uña corta cómoda (Cuadrada Suave / Squoval Talla S) por su trabajo en oficina. Combina manos con Pedicura Spa.',
+    lastVisit: '18 Oct 2026',
+    treatment: 'Manicura semipermanente con refuerzo + Pedicura completa & Spa',
+    bonos: [
+      {
+        id: 'bn-201',
+        name: 'Pack 3 Manicuras Refuerzo + Pedicura Completa & Spa',
+        totalSessions: 3,
+        usedSessions: 1,
+        price: '145€',
+        notes: 'Incluye nivelación con Base Rubber y pedicura completa con sales marinas.',
+        createdAt: '2026-09-15',
+        status: 'active'
+      }
+    ],
+    treatments: [
+      {
+        id: 402,
+        date: '18 Oct 2026',
+        timestamp: new Date('2026-10-18T11:30:00Z').getTime(),
+        name: 'Manicura semipermanente con refuerzo + Pedicura completa & Spa',
+        formula: 'Forma Cuadrada Suave (Squoval) · Talla S · Nivelación Base Rubber Rosada #02 · Color Rojo Cereza #14 · Pedicura Spa sales minerales',
+        notes: 'Nivelación de arquitectura en uñas índices. Pedicura completa con retirada de durezas y masaje hidratante.',
+        ritual: 'Baño espumoso tibio + manteca de karité en talones',
+        photos: {
+          before: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&q=80&w=800',
+          after: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=80&w=800'
+        }
+      }
+    ],
+    consent: {
+      signed: true,
+      signedAt: '2026-10-18T11:15:00Z',
+      formattedDate: '18 Oct 2026, 11:15',
+      permissions: {
+        treatment: true,
+        photosPrivate: true,
+        photosMarketing: true,
+        communications: true
+      },
+      legalNoticeVersion: 'RGPD-2026-v2.1',
+      legalCustodian: "CM Salón D’ Campodónico · Nails & Beauty"
+    }
+  },
+  {
+    id: '3',
+    name: 'Carla Mendoza',
+    avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600',
+    photo: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600',
+    phone: '+34 638 877 945',
+    email: 'carla.mendoza@ejemplo.com',
+    allergies: 'Sensibilidad al calor brusco en lámpara UV/LED: activar siempre botón Low Heat (99s) al polimerizar gel o base.',
+    notes: 'Clienta VIP en CM Salón D’ Campodónico (Arrecife). Crecimiento rápido de uña natural (relleno puntual cada 18-21 días). Aprovecha la cita para Higiene Facial Profunda.',
+    lastVisit: '28 Sep 2026',
+    treatment: 'Relleno acrílico + Efecto Chrome Pearl & Higiene facial profunda',
+    bonos: [
+      {
+        id: 'bn-301',
+        name: 'Membresía VIP Campodónico: 4 Rellenos Acrílicos + Nail Art',
+        totalSessions: 4,
+        usedSessions: 2,
+        price: '130€',
+        notes: 'Incluye relleno acrílico Talla S/M, efecto Chrome o Francesa y bebida en salón.',
+        createdAt: '2026-08-20',
+        status: 'active'
+      }
+    ],
+    treatments: [
+      {
+        id: 403,
+        date: '28 Sep 2026',
+        timestamp: new Date('2026-09-28T16:00:00Z').getTime(),
+        name: 'Relleno acrílico + Higiene facial profunda',
+        formula: 'Forma Almendra · Talla M · Relleno Acrílico Cover Rose → Polvo Chrome Pearl Glazed · Francesa Micro Blanca · Aceite de cutículas',
+        notes: 'Se rebaja 2 mm el largo para mantener equilibrio del ápice. Sin levantamientos previos. Acabado perlado espejo impecable.',
+        ritual: 'Masaje de manos con crema de colágeno + velo facial calmante',
+        photos: {
+          before: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=800',
+          after: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&q=80&w=800'
+        }
+      },
+      {
+        id: 404,
+        date: '07 Sep 2026',
+        timestamp: new Date('2026-09-07T17:00:00Z').getTime(),
+        name: 'Uñas acrílicas Talla S',
+        formula: 'Puesta nueva con molde · Forma Almendra · Talla S/M · Acrílico Nude Petals + Top Brillante',
+        notes: 'Primera puesta esculpida desde cero. Excelente adherencia.',
+        ritual: 'Hidratación de cutícula con vitamina E',
+        photos: {
+          before: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&q=80&w=800',
+          after: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=80&w=800'
+        }
+      }
+    ],
+    consent: {
+      signed: true,
+      signedAt: '2026-09-07T16:45:00Z',
+      formattedDate: '07 Sep 2026, 16:45',
+      permissions: {
+        treatment: true,
+        photosPrivate: true,
+        photosMarketing: true,
+        communications: true
+      },
+      legalNoticeVersion: 'RGPD-2026-v2.1',
+      legalCustodian: "CM Salón D’ Campodónico · Nails & Beauty"
+    }
+  }
+];
+
+export const INITIAL_SALON_ESTETICA_CLIENTS = [
+  {
+    id: '1',
+    name: 'Sofía Cabrera',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600',
+    photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600',
+    phone: '+34 638 877 945',
+    email: 'sofia.cabrera@ejemplo.com',
+    allergies: 'Cuero cabelludo sensible a tintes con amoníaco. Usar siempre coloración orgánica sin PPD + aceite protector en contorno.',
+    notes: '70% de cana en sienes (empezar aplicación por frontal). Le gusta el flequillo cortina desfilado a la altura del pómulo y ondas al agua suaves.',
+    lastVisit: '20 Sep 2026',
+    treatment: 'Color / Tinte de Raíz Orgánico + Corte y Peinado / Brushing',
+    bonos: [
+      {
+        id: 'bpe-101',
+        name: 'Bono Color & Brushing: 4 Retoques de Raíz + Hidratación',
+        totalSessions: 4,
+        usedSessions: 2,
+        price: '140€',
+        notes: 'Mantenimiento mensual de raíz orgánica, lavado spa y peinado Brushing.',
+        createdAt: '2026-07-15',
+        status: 'active'
+      }
+    ],
+    treatments: [
+      {
+        id: 501,
+        date: '20 Sep 2026',
+        timestamp: new Date('2026-09-20T10:30:00Z').getTime(),
+        name: 'Color / Tinte de Raíz Orgánico + Corte y Peinado / Brushing',
+        formula: 'Raíz: 35g Tinte Orgánico Sin Amoníaco 6.0 + 15g 6.1 (Ox. 20 vol, 35 min) → Emulsión medios/puntas Gloss 7.31 · Brushing ondas suaves',
+        notes: 'Cobertura 100% de cana en sienes sin irritación. Despuntado de 1.5 cm en capas largas para dar movimiento.',
+        ritual: 'Masaje capilar relajante en lavacabezas + ampolla de proteínas de seda',
+        photos: {
+          before: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&q=80&w=800',
+          after: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=800'
+        }
+      }
+    ],
+    consent: {
+      signed: true,
+      signedAt: '2026-09-20T10:15:00Z',
+      formattedDate: '20 Sep 2026, 10:15',
+      permissions: {
+        treatment: true,
+        photosPrivate: true,
+        photosMarketing: true,
+        communications: true
+      },
+      legalNoticeVersion: 'RGPD-2026-v2.1',
+      legalCustodian: 'Lumina · Peluquería & Estética'
+    }
+  },
+  {
+    id: '2',
+    name: 'Martina Estévez',
+    avatar: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=600',
+    photo: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=600',
+    phone: '+34 645 991 200',
+    email: 'martina.estevez@ejemplo.com',
+    allergies: 'Piel mixta con tendencia a rosácea en mejillas (evitar vapor directo muy caliente y peelings glicólicos fuertes).',
+    notes: 'Viene a cabina facial cada 4 semanas. Prefiere camilla templada, luz tenue y masaje craneal mientras actúa la mascarilla. También se hace Lifting de Pestañas.',
+    lastVisit: '14 Oct 2026',
+    treatment: 'Higiene Facial Profunda + Ultrasonidos & Radiofrecuencia Facial',
+    bonos: [
+      {
+        id: 'bpe-201',
+        name: 'Bono Cabina Facial: 4 Sesiones Radiofrecuencia + Vitaminas',
+        totalSessions: 4,
+        usedSessions: 2,
+        price: '175€',
+        notes: 'Protocolo reafirmante de colágeno con radiofrecuencia bipolar y ácido hialurónico.',
+        createdAt: '2026-08-25',
+        status: 'active'
+      }
+    ],
+    treatments: [
+      {
+        id: 502,
+        date: '14 Oct 2026',
+        timestamp: new Date('2026-10-14T17:00:00Z').getTime(),
+        name: 'Higiene Facial Profunda + Ultrasonidos & Radiofrecuencia',
+        formula: 'Doble limpieza enzimática → Espátula Ultrasónica → Radiofrecuencia Facial 40°C (20 min en óvalo y pómulos) → Vial Ácido Hialurónico + Mascarilla Calmante',
+        notes: 'Piel mucho más jugosa, poros limpios sin rojeces y efecto tensor inmediato en tercio inferior.',
+        ritual: 'Drenaje linfático facial con cuarzo rosa frío + infusión de frutos rojos',
+        photos: {
+          before: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&q=80&w=800',
+          after: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=800'
+        }
+      }
+    ],
+    consent: {
+      signed: true,
+      signedAt: '2026-10-14T16:45:00Z',
+      formattedDate: '14 Oct 2026, 16:45',
+      permissions: {
+        treatment: true,
+        photosPrivate: true,
+        photosMarketing: true,
+        communications: true
+      },
+      legalNoticeVersion: 'RGPD-2026-v2.1',
+      legalCustodian: 'Lumina · Peluquería & Estética'
+    }
+  },
+  {
+    id: '3',
+    name: 'Elena Lanzarote',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600',
+    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600',
+    phone: '+34 638 877 945',
+    email: 'elena.lanzarote@ejemplo.com',
+    allergies: 'Fibra capilar fina en puntas por mechas previas: añadir siempre protector Plex Paso 1 en decoloración y no superar 20 vol.',
+    notes: 'Clienta VIP de Peluquería y Estética. Base natural altura 6; le encanta el rubio vainilla perlado frío con contorno iluminado (Money Piece). En cabina alterna Peeling Luminosidad y Diseño de Cejas.',
+    lastVisit: '18 Sep 2026',
+    treatment: 'Mechas Balayage / Babylights + Matiz & Tratamiento Botox Capilar',
+    bonos: [
+      {
+        id: 'bpe-301',
+        name: 'Membresía Salón & Cabina: 4 Sesiones Botox Capilar + Higiene Facial',
+        totalSessions: 4,
+        usedSessions: 1,
+        price: '190€',
+        notes: 'Combina nutrición capilar profunda efecto espejo y protocolo de luminosidad facial en cabina.',
+        createdAt: '2026-09-18',
+        status: 'active'
+      }
+    ],
+    treatments: [
+      {
+        id: 503,
+        date: '18 Sep 2026',
+        timestamp: new Date('2026-09-18T11:00:00Z').getTime(),
+        name: 'Mechas Balayage / Babylights + Matiz & Botox Capilar',
+        formula: 'Contorno Money Piece + Balayage mano alzada (Deco Plex 20 vol) → Esfumado de raíz 7.1 (6 vol) → Matiz Gloss 9.21 + 10.12 (12 min) → Sellado Bótox Capilar Ácido Hialurónico',
+        notes: 'Rubio beige perlado luminoso con transición súper natural en raíz para que crezca sin marca. Fibra sellada con brillo espejo.',
+        ritual: 'Toalla tibia con aromaterapia en lavacabezas + sérum sellador de puntas',
+        photos: {
+          before: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&q=80&w=800',
+          after: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=800'
+        }
+      },
+      {
+        id: 504,
+        date: '22 Ago 2026',
+        timestamp: new Date('2026-08-22T16:30:00Z').getTime(),
+        name: 'Peeling Luminosidad & Vitaminas + Diseño de Cejas & Lifting de Pestañas',
+        formula: 'Cabina: Peeling Enzimático + Cóctel Vitamina C 20% + Velo Colágeno | Mirada: Lifting de Pestañas molde M + Tinte Negro Azulado + Diseño Cejas a Hilo',
+        notes: 'Mirada abierta natural y piel radiante antes de evento.',
+        ritual: 'Masaje facial reafirmante + bruma termal',
+        photos: {
+          before: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&q=80&w=800',
+          after: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800'
+        }
+      }
+    ],
+    consent: {
+      signed: true,
+      signedAt: '2026-08-22T16:15:00Z',
+      formattedDate: '22 Ago 2026, 16:15',
+      permissions: {
+        treatment: true,
+        photosPrivate: true,
+        photosMarketing: true,
+        communications: true
+      },
+      legalNoticeVersion: 'RGPD-2026-v2.1',
+      legalCustodian: 'Lumina · Peluquería & Estética'
+    }
+  }
+];
+
 export const ClientProvider = ({ children }) => {
   const shopCtx = useContext(ShopContext);
   const activeShopSlug = shopCtx?.activeShopSlug || DEFAULT_SHOP_SLUG;
@@ -807,7 +1304,16 @@ export const ClientProvider = ({ children }) => {
   // Helper to filter out fake Madrid demo clients from real tenant barbershops
   const stripDemoMadridClients = useCallback((list, slug) => {
     if (!Array.isArray(list)) return [];
-    if (slug === DEFAULT_SHOP_SLUG || slug === 'default') return list;
+    if (
+      slug === DEFAULT_SHOP_SLUG ||
+      slug === 'default' ||
+      slug === 'campodonico-nails' ||
+      slug === 'campodonico-unas' ||
+      slug === 'peluqueria-estetica' ||
+      slug === 'salon-estetica'
+    ) {
+      return list;
+    }
     const demoNames = new Set([
       'Mateo "El Flaco" Vargas',
       'Marcos Varela',
@@ -823,8 +1329,14 @@ export const ClientProvider = ({ children }) => {
     );
   }, []);
 
-  // Modo de negocio activo ('barber' por defecto para Barbería Urbana)
+  // Modo de negocio activo ('barber' por defecto, sincronizado con la tienda femenina activa si es uñas o peluquería-estética)
   const [businessMode, setBusinessMode] = useState(() => {
+    if (activeShopSlug === 'campodonico-nails' || activeShopSlug === 'campodonico-unas') {
+      return 'nails';
+    }
+    if (activeShopSlug === 'peluqueria-estetica' || activeShopSlug === 'salon-estetica') {
+      return 'peluqueria';
+    }
     try {
       const savedBarberVersion = localStorage.getItem('kutz_barber_mode_v1');
       if (!savedBarberVersion) {
@@ -839,6 +1351,20 @@ export const ClientProvider = ({ children }) => {
     }
     return 'barber';
   });
+
+  useEffect(() => {
+    if (activeShopSlug === 'campodonico-nails' || activeShopSlug === 'campodonico-unas') {
+      setBusinessMode('nails');
+    } else if (activeShopSlug === 'peluqueria-estetica' || activeShopSlug === 'salon-estetica') {
+      setBusinessMode('peluqueria');
+    } else if (
+      activeShopSlug === 'joseh-barber' ||
+      activeShopSlug === 'kutz-madrid' ||
+      activeShopSlug === 'barberia-rex'
+    ) {
+      setBusinessMode('barber');
+    }
+  }, [activeShopSlug]);
 
   useEffect(() => {
     try {
@@ -862,9 +1388,21 @@ export const ClientProvider = ({ children }) => {
           typeof window !== 'undefined' ? localStorage.getItem(keys.CLIENTS) : null;
         if (tenantSaved) {
           const parsed = JSON.parse(tenantSaved);
-          if (Array.isArray(parsed)) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             return stripDemoMadridClients(parsed, slug);
           }
+        }
+
+        // Demo / Tienda 1: CM Salón D' Campodónico · Uñas, Manicura & Pedicura
+        if (slug === 'campodonico-nails' || slug === 'campodonico-unas') {
+          safeSetItem(keys.CLIENTS, INITIAL_NAILS_CLIENTS);
+          return INITIAL_NAILS_CLIENTS;
+        }
+
+        // Demo / Tienda 2: Peluquería & Estética Femenina Normal (Sin Uñas)
+        if (slug === 'peluqueria-estetica' || slug === 'salon-estetica') {
+          safeSetItem(keys.CLIENTS, INITIAL_SALON_ESTETICA_CLIENTS);
+          return INITIAL_SALON_ESTETICA_CLIENTS;
         }
 
         // Only kutz-madrid uses INITIAL_BARBER_CLIENTS demo seed
@@ -902,6 +1440,12 @@ export const ClientProvider = ({ children }) => {
       } catch (err) {
         console.warn('Error al leer de localStorage:', err);
       }
+      if (slug === 'campodonico-nails' || slug === 'campodonico-unas') {
+        return INITIAL_NAILS_CLIENTS;
+      }
+      if (slug === 'peluqueria-estetica' || slug === 'salon-estetica') {
+        return INITIAL_SALON_ESTETICA_CLIENTS;
+      }
       return slug === DEFAULT_SHOP_SLUG ? INITIAL_BARBER_CLIENTS : [];
     },
     [stripDemoMadridClients, isPublicRoute]
@@ -909,7 +1453,7 @@ export const ClientProvider = ({ children }) => {
 
   const [clients, setClients] = useState(() => loadTenantClients(activeShopSlug, isPublicRoute));
 
-  // --- 1. ESTADO DE COLA VIVA (WALK-IN QUEUE) AISLADO POR BARBERÍA ---
+  // --- 1. ESTADO DE COLA VIVA (WALK-IN QUEUE) AISLADO POR TIENDA ---
   const loadTenantQueue = useCallback((slug, forPublic = isPublicRoute) => {
     if (forPublic) {
       return [];
@@ -918,6 +1462,54 @@ export const ClientProvider = ({ children }) => {
     try {
       const savedTenantQueue = safeGetItem(keys.QUEUE, null);
       if (Array.isArray(savedTenantQueue)) return savedTenantQueue;
+      if (slug === 'campodonico-nails' || slug === 'campodonico-unas') {
+        return [
+          {
+            id: 'wq-nails-1',
+            name: 'Laura Betancor',
+            phone: '+34 638 877 945',
+            service: 'Relleno acrílico (35€)',
+            waitMinutes: 15,
+            barber: 'Especialista Nails (D’ Campodónico)',
+            status: 'waiting',
+            timeIn: '17:30'
+          },
+          {
+            id: 'wq-nails-2',
+            name: 'Marta Cabrera',
+            phone: '+34 628 112 233',
+            service: 'Manicura semipermanente con refuerzo (25€)',
+            waitMinutes: 25,
+            barber: 'Especialista Nails (D’ Campodónico)',
+            status: 'waiting',
+            timeIn: '17:45'
+          }
+        ];
+      }
+      if (slug === 'peluqueria-estetica' || slug === 'salon-estetica') {
+        return [
+          {
+            id: 'wq-pe-1',
+            name: 'Claudia Perdomo',
+            phone: '+34 638 877 945',
+            service: 'Corte y Peinado / Brushing (32€)',
+            waitMinutes: 15,
+            barber: 'Sofía (Corte, Brushing & Keratina)',
+            status: 'waiting',
+            timeIn: '17:20'
+          },
+          {
+            id: 'wq-pe-2',
+            name: 'Irene Morales',
+            phone: '+34 655 334 411',
+            service: 'Diseño de Cejas & Lifting de Pestañas (30€)',
+            waitMinutes: 20,
+            barber: 'Valeria (Cabina Facial & Corporal)',
+            status: 'waiting',
+            timeIn: '17:35'
+          }
+        ];
+      }
       if (slug === DEFAULT_SHOP_SLUG) {
         const savedLegacy = localStorage.getItem('kutz_walkin_queue');
         if (savedLegacy) return JSON.parse(savedLegacy);

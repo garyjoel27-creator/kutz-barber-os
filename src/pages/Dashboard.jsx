@@ -35,7 +35,13 @@ import {
   dispatchBarberAction,
   calculateHoldExpiration,
 } from '../lib/syncService';
-import { DEFAULT_SHOP_SLUG, buildWhatsAppUrl, getShopLocalDateTime } from '../lib/shopUtils';
+import {
+  DEFAULT_SHOP_SLUG,
+  buildWhatsAppUrl,
+  getShopLocalDateTime,
+  getShopVertical,
+  isFemaleVertical,
+} from '../lib/shopUtils';
 import VisualAgendaTimeline from '../components/VisualAgendaTimeline';
 import { soundFx } from '../lib/soundFx';
 import { Trash2 } from 'lucide-react';
@@ -95,6 +101,66 @@ function buildChairsForShop(shop, slug) {
         clientId: '2',
         clientName: 'Dani Morales',
         service: 'Low Taper + Ritual Toalla',
+      },
+    ];
+  }
+
+  if (slug === 'campodonico-nails' || slug === 'campodonico-unas') {
+    return [
+      {
+        id: 'MESA NAILS 1',
+        barberId: 'campodonico-nails-1',
+        barber: 'Especialista Nails (D’ Campodónico)',
+        specialty: 'Uñas Acrílicas & Manicura',
+        status: 'CUTTING',
+        clientId: '3',
+        clientName: 'Carla Mendoza',
+        service: 'Relleno acrílico (35€)',
+      },
+      {
+        id: 'CABINA SPA 2',
+        barberId: 'campodonico-spa-2',
+        barber: 'Especialista Pedicura & Cabina Facial',
+        specialty: 'Pedicura Completa & Higiene Facial',
+        status: 'WALKIN',
+        clientId: null,
+        clientName: '',
+        service: '',
+      },
+    ];
+  }
+
+  if (slug === 'peluqueria-estetica' || slug === 'salon-estetica') {
+    return [
+      {
+        id: 'TOCADOR 1',
+        barberId: 'estilista-color',
+        barber: 'Elena (Colorimetría & Balayage)',
+        specialty: 'Balayage, Babylights & Tinte Orgánico',
+        status: 'CUTTING',
+        clientId: '3',
+        clientName: 'Elena Lanzarote',
+        service: 'Mechas Balayage / Babylights + Matiz (85€)',
+      },
+      {
+        id: 'TOCADOR 2',
+        barberId: 'estilista-corte',
+        barber: 'Sofía (Corte, Brushing & Keratina)',
+        specialty: 'Corte, Brushing & Botox Capilar',
+        status: 'WALKIN',
+        clientId: null,
+        clientName: '',
+        service: '',
+      },
+      {
+        id: 'CABINA ESTÉTICA 3',
+        barberId: 'cabina-facial',
+        barber: 'Valeria (Cabina Facial & Corporal)',
+        specialty: 'Higiene Facial, Radiofrecuencia & Cejas',
+        status: 'BEARD',
+        clientId: '2',
+        clientName: 'Martina Estévez',
+        service: 'Higiene Facial Profunda + Ultrasonidos (45€)',
       },
     ];
   }
@@ -166,6 +232,9 @@ const Dashboard = () => {
   const outletCtx = useOutletContext() || {};
   const { openKiosk, openNoShow, openReel, openQRPoster } = outletCtx;
   const backupInputRef = useRef(null);
+
+  const activeVertical = getShopVertical(activeShop, activeShopSlug, businessMode);
+  const isFemale = isFemaleVertical(activeVertical);
 
   const [notice, setNotice] = useState('');
   const [isAddingWalkIn, setIsAddingWalkIn] = useState(false);
@@ -258,6 +327,20 @@ const Dashboard = () => {
       }
     } catch {
       // fallback
+    }
+    if (slug === 'campodonico-nails' || slug === 'campodonico-unas') {
+      return [
+        { id: 'sn-1', barber: 'Especialista Nails (D’ Campodónico)', clientName: 'Valeria B.', service: 'Uñas acrílicas Talla M/L', amount: 50, productAmount: 12, method: 'bizum', time: '10:30' },
+        { id: 'sn-2', barber: 'Especialista Pedicura & Cabina Facial', clientName: 'Lucía P.', service: 'Pedicura completa & Spa', amount: 30, productAmount: 0, method: 'cash', time: '11:30' },
+        { id: 'sn-3', barber: 'Especialista Nails (D’ Campodónico)', clientName: 'Nerea M.', service: 'Relleno acrílico', amount: 35, productAmount: 0, method: 'bizum', time: '12:45' },
+      ];
+    }
+    if (slug === 'peluqueria-estetica' || slug === 'salon-estetica') {
+      return [
+        { id: 'spe-1', barber: 'Elena (Colorimetría & Balayage)', clientName: 'Sofía C.', service: 'Color / Tinte de Raíz Orgánico', amount: 38, productAmount: 15, method: 'bizum', time: '10:00' },
+        { id: 'spe-2', barber: 'Valeria (Cabina Facial & Corporal)', clientName: 'Martina E.', service: 'Higiene Facial Profunda + Ultrasonidos', amount: 45, productAmount: 0, method: 'cash', time: '11:15' },
+        { id: 'spe-3', barber: 'Sofía (Corte, Brushing & Keratina)', clientName: 'Paula R.', service: 'Corte y Peinado / Brushing', amount: 32, productAmount: 15, method: 'bizum', time: '12:30' },
+      ];
     }
     if (slug !== DEFAULT_SHOP_SLUG) return [];
     return [
@@ -809,6 +892,108 @@ const Dashboard = () => {
       } catch {
         // ignore
       }
+    } else if (
+      (activeShopSlug === 'campodonico-nails' || activeShopSlug === 'campodonico-unas') &&
+      list.length === 0 &&
+      !isSeeded
+    ) {
+      const now = Date.now();
+      list = [
+        {
+          id: `apt-demo-nails-1-${now}`,
+          shopSlug: activeShopSlug,
+          type: 'appointment',
+          clientName: 'Valeria Betancor',
+          clientPhone: '+34 638 877 945',
+          barberId: 'campodonico-nails-1',
+          barberName: 'Especialista Nails (D’ Campodónico)',
+          serviceId: 'cn3',
+          serviceName: 'Relleno acrílico',
+          durationMinutes: 75,
+          price: 35,
+          date: todayIso,
+          timeSlot: '16:30',
+          indicativeStyle: 'Lo mismo de siempre (Almendra Baby Boomer)',
+          status: 'pending',
+          createdAt: now,
+          holdExpiresAt: calculateHoldExpiration(now, 10),
+        },
+        {
+          id: `apt-demo-nails-2-${now + 1}`,
+          shopSlug: activeShopSlug,
+          type: 'appointment',
+          clientName: 'Lucía Perdomo',
+          clientPhone: '+34 628 441 122',
+          barberId: 'campodonico-spa-2',
+          barberName: 'Especialista Pedicura & Cabina Facial',
+          serviceId: 'cn6',
+          serviceName: 'Pedicura completa & Spa',
+          durationMinutes: 60,
+          price: 30,
+          date: todayIso,
+          timeSlot: '17:30',
+          indicativeStyle: 'Pedicura Spa + Rojo Cereza',
+          status: 'confirmed',
+          createdAt: now,
+        },
+      ];
+      saveLocalShopState(activeShopSlug, { ...state, appointments: list });
+      try {
+        window.localStorage.setItem(demoSeededKey, '1');
+      } catch {
+        // ignore
+      }
+    } else if (
+      (activeShopSlug === 'peluqueria-estetica' || activeShopSlug === 'salon-estetica') &&
+      list.length === 0 &&
+      !isSeeded
+    ) {
+      const now = Date.now();
+      list = [
+        {
+          id: `apt-demo-pe-1-${now}`,
+          shopSlug: activeShopSlug,
+          type: 'appointment',
+          clientName: 'Sofía Cabrera',
+          clientPhone: '+34 638 877 945',
+          barberId: 'estilista-color',
+          barberName: 'Elena (Colorimetría & Balayage)',
+          serviceId: 'pe2',
+          serviceName: 'Color / Tinte de Raíz Orgánico',
+          durationMinutes: 75,
+          price: 38,
+          date: todayIso,
+          timeSlot: '16:00',
+          indicativeStyle: 'Retoque de raíz orgánica 6.0 + 6.1',
+          status: 'pending',
+          createdAt: now,
+          holdExpiresAt: calculateHoldExpiration(now, 10),
+        },
+        {
+          id: `apt-demo-pe-2-${now + 1}`,
+          shopSlug: activeShopSlug,
+          type: 'appointment',
+          clientName: 'Martina Estévez',
+          clientPhone: '+34 645 991 200',
+          barberId: 'cabina-facial',
+          barberName: 'Valeria (Cabina Facial & Corporal)',
+          serviceId: 'pe6',
+          serviceName: 'Radiofrecuencia / Rejuvenecimiento Facial',
+          durationMinutes: 60,
+          price: 50,
+          date: todayIso,
+          timeSlot: '17:30',
+          indicativeStyle: 'Radiofrecuencia Facial + Ácido Hialurónico',
+          status: 'confirmed',
+          createdAt: now,
+        },
+      ];
+      saveLocalShopState(activeShopSlug, { ...state, appointments: list });
+      try {
+        window.localStorage.setItem(demoSeededKey, '1');
+      } catch {
+        // ignore
+      }
     }
 
     setQrAppointments(list);
@@ -1171,21 +1356,45 @@ const Dashboard = () => {
       {/* ===================================================================== */}
       {/* CABECERA CAÑERA & DIRECTA                                             */}
       {/* ===================================================================== */}
-      <header className="luxury-card p-5 border-l-4 border-l-[#10B981] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header
+        className={`luxury-card p-5 border-l-4 ${
+          isFemale ? 'border-l-[#EC4899]' : 'border-l-[#10B981]'
+        } flex flex-col md:flex-row md:items-center justify-between gap-4`}
+      >
         <div className="space-y-1.5">
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-2.5 flex-wrap gap-y-1">
             <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#10B981]"></span>
+              <span
+                className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
+                  isFemale ? 'bg-[#EC4899]' : 'bg-[#10B981]'
+                } opacity-75`}
+              ></span>
+              <span
+                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  isFemale ? 'bg-[#EC4899]' : 'bg-[#10B981]'
+                }`}
+              ></span>
             </span>
             <h1 className="text-2xl sm:text-3xl font-serif font-black text-white tracking-tight uppercase">
-              Salón Hoy
+              {activeVertical === 'nails'
+                ? 'Salón Hoy · Uñas & Manicura'
+                : activeVertical === 'peluqueria'
+                ? 'Salón Hoy · Peluquería & Estética'
+                : 'Salón Hoy'}
             </h1>
           </div>
 
           <div className="flex items-center flex-wrap gap-2 text-xs">
-            <span className="px-2.5 py-1 rounded-lg bg-[#1B202B] border border-[#262C3A] text-[#34D399] font-bold">
-              ✂️ {busyChairsCount}/{chairs.length} Sillones ocupados
+            <span
+              className={`px-2.5 py-1 rounded-lg bg-[#1B202B] border border-[#262C3A] ${
+                isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'
+              } font-bold`}
+            >
+              {activeVertical === 'nails'
+                ? `💅 ${busyChairsCount}/${chairs.length} Mesas/Cabinas ocupadas`
+                : activeVertical === 'peluqueria'
+                ? `💇‍♀️ ${busyChairsCount}/${chairs.length} Tocadores/Cabinas ocupados`
+                : `✂️ ${busyChairsCount}/${chairs.length} Sillones ocupados`}
             </span>
             <span
               className={`px-2.5 py-1 rounded-lg border font-bold ${
@@ -1197,7 +1406,7 @@ const Dashboard = () => {
               ⏳ {walkInQueue.length} Esperando
             </span>
             <span className="px-2.5 py-1 rounded-lg bg-[#1B202B] border border-[#262C3A] text-[#E5E7EB] font-semibold">
-              ✅ {completedToday} Cortes hoy
+              ✅ {completedToday} {isFemale ? 'Servicios hoy' : 'Cortes hoy'}
             </span>
             <button
               type="button"
@@ -1205,8 +1414,12 @@ const Dashboard = () => {
                 soundFx.playClick();
                 setIsCashierOpen((v) => !v);
               }}
-              className="px-2.5 py-1 rounded-lg bg-[#10B981]/20 hover:bg-[#10B981] border border-[#10B981]/50 text-[#34D399] hover:text-[#07090C] font-black transition-all cursor-pointer flex items-center gap-1"
-              title="Abrir Caja de Hoy y Reparto de Comisiones de Barberos"
+              className={`px-2.5 py-1 rounded-lg ${
+                isFemale
+                  ? 'bg-[#EC4899]/20 hover:bg-[#EC4899] border border-[#EC4899]/50 text-[#F9A8D4] hover:text-white'
+                  : 'bg-[#10B981]/20 hover:bg-[#10B981] border border-[#10B981]/50 text-[#34D399] hover:text-[#07090C]'
+              } font-black transition-all cursor-pointer flex items-center gap-1`}
+              title="Abrir Caja de Hoy y Reparto de Comisiones"
             >
               <Wallet size={13} />
               <span>💰 Caja Hoy: {cashierSummary.grandTotal}€ (Comisiones)</span>
@@ -1844,15 +2057,19 @@ const Dashboard = () => {
                       )}
                     </div>
 
-                    {/* CAJA DE RECETA AUTOMÁTICA (La magia para el barbero) */}
+                    {/* CAJA DE RECETA AUTOMÁTICA (Conectada con Tarjeta 3D) */}
                     {matched ? (
                       <div className="p-3 rounded-xl bg-[#0A0C0F] border border-[#252A36] space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#9CA3AF]">
-                            Receta exacta de sus peines:
+                            {activeVertical === 'nails'
+                              ? 'Diseño habitual de uñas (Forma, Talla y Base):'
+                              : activeVertical === 'peluqueria'
+                              ? 'Fórmula exacta de colorimetría / cabina:'
+                              : 'Receta exacta de sus peines:'}
                           </span>
                           {apt.activeBono && (
-                            <span className="text-[10px] font-bold text-[#34D399]">
+                            <span className={`text-[10px] font-bold ${isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'}`}>
                               🎟️ Bono VIP ({apt.activeBono.usedSessions}/
                               {apt.activeBono.totalSessions})
                             </span>
@@ -1864,7 +2081,9 @@ const Dashboard = () => {
                             {apt.recipePills.map((step, idx) => (
                               <span
                                 key={idx}
-                                className="px-2 py-0.5 rounded-md bg-[#141820] border border-[#10B981]/40 text-[11px] font-mono font-bold text-white"
+                                className={`px-2 py-0.5 rounded-md bg-[#141820] border ${
+                                  isFemale ? 'border-[#EC4899]/40' : 'border-[#10B981]/40'
+                                } text-[11px] font-mono font-bold text-white`}
                               >
                                 {step}
                               </span>
@@ -1872,7 +2091,7 @@ const Dashboard = () => {
                           </div>
                         ) : (
                           <p className="text-xs text-[#D1D5DB]">
-                            {apt.latestFormula || 'Corte habitual en su ficha'}
+                            {apt.latestFormula || 'Fórmula habitual en su ficha'}
                           </p>
                         )}
 
@@ -1886,13 +2105,13 @@ const Dashboard = () => {
                     ) : (
                       <div className="p-3 rounded-xl bg-[#0A0C0F] border border-[#252A36] text-xs text-[#D1D5DB]">
                         <span className="text-[#9CA3AF] font-semibold">
-                          Estilo orientativo pedido en el QR:{' '}
+                          Preferencia pedida en el QR:{' '}
                         </span>
-                        <strong className="text-[#34D399]">
-                          {apt.indicativeStyle || 'Skin Fade #000'}
+                        <strong className={isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'}>
+                          {apt.indicativeStyle || 'Servicio habitual'}
                         </strong>
                         <span className="block text-[10px] text-[#9CA3AF] mt-1">
-                          Al aceptar, se creará su Tarjeta 3D automáticamente para guardar sus peines hoy.
+                          Al aceptar, se creará su Tarjeta 3D automáticamente para guardar su fórmula hoy.
                         </span>
                       </div>
                     )}
@@ -2153,12 +2372,22 @@ const Dashboard = () => {
       {/* ZONA PRINCIPAL: SILLONES EN DIRECTO + COLA DE ESPERA                  */}
       {/* ===================================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* SILLONES DEL SALÓN (8 columnas) */}
+        {/* SILLONES / MESAS / TOCADORES DEL SALÓN (8 columnas) */}
         <section className="lg:col-span-8 space-y-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-sm font-serif font-bold uppercase tracking-wider text-white flex items-center space-x-2">
-              <Scissors size={16} className="text-[#10B981]" />
-              <span>Tus Sillones Ahora</span>
+              {isFemale ? (
+                <Sparkles size={16} className="text-[#EC4899]" />
+              ) : (
+                <Scissors size={16} className="text-[#10B981]" />
+              )}
+              <span>
+                {activeVertical === 'nails'
+                  ? 'Tus Mesas & Cabinas Ahora'
+                  : activeVertical === 'peluqueria'
+                  ? 'Tus Tocadores & Cabinas Ahora'
+                  : 'Tus Sillones Ahora'}
+              </span>
             </h2>
             <span className="text-xs text-[#9CA3AF]">
               Control directo en 1 toque
@@ -2170,13 +2399,28 @@ const Dashboard = () => {
               const st = CHAIR_STATES[chair.status] || CHAIR_STATES.WALKIN;
               const isFree = chair.status === 'WALKIN';
               const isPickingThis = pickingForChairId === chair.id;
+              const statusDisplayLabel = isFree
+                ? 'LIBRE'
+                : activeVertical === 'nails'
+                ? chair.status === 'BEARD'
+                  ? 'PEDICURA & SPA'
+                  : 'UÑAS & MANICURA'
+                : activeVertical === 'peluqueria'
+                ? chair.status === 'BEARD'
+                  ? 'CABINA ESTÉTICA'
+                  : 'COLOR & PEINADO'
+                : st.label;
 
               return (
                 <div
                   key={chair.id}
-                  className={`luxury-card p-5 flex flex-col justify-between border-t-4 min-h-[245px] ${st.borderTop}`}
+                  className={`luxury-card p-5 flex flex-col justify-between border-t-4 min-h-[245px] ${
+                    !isFree && isFemale && chair.status === 'CUTTING'
+                      ? 'border-t-[#EC4899]'
+                      : st.borderTop
+                  }`}
                 >
-                  {/* Cabecera del sillón */}
+                  {/* Cabecera del puesto */}
                   <div>
                     <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#252A36]">
                       <div>
@@ -2189,22 +2433,30 @@ const Dashboard = () => {
                       </div>
 
                       <span
-                        className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center space-x-1.5 shrink-0 ${st.badgeClass}`}
+                        className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center space-x-1.5 shrink-0 ${
+                          !isFree && isFemale && chair.status === 'CUTTING'
+                            ? 'bg-[#EC4899]/20 text-[#F9A8D4] border-[#EC4899]/50'
+                            : st.badgeClass
+                        }`}
                       >
                         <span
-                          className={`w-2 h-2 rounded-full ${st.dotClass}`}
+                          className={`w-2 h-2 rounded-full ${
+                            !isFree && isFemale && chair.status === 'CUTTING'
+                              ? 'bg-[#EC4899] animate-pulse'
+                              : st.dotClass
+                          }`}
                         ></span>
-                        <span>{st.label}</span>
+                        <span>{statusDisplayLabel}</span>
                       </span>
                     </div>
 
-                    {/* Contenido según Libre o Cortando */}
+                    {/* Contenido según Libre u Ocupado */}
                     {isFree ? (
                       isPickingThis ? (
                         <div className="mt-3 space-y-2 animate-in fade-in">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-[#60A5FA]">
-                              ¿Quién se sienta?
+                              ¿Quién pasa ahora?
                             </span>
                             <button
                               type="button"
@@ -2232,7 +2484,9 @@ const Dashboard = () => {
                                   });
                                 }
                               }}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#10B981] text-[#07090C] text-xs font-bold cursor-pointer shrink-0"
+                              className={`px-2.5 py-1.5 rounded-lg ${
+                                isFemale ? 'bg-[#EC4899] text-white' : 'bg-[#10B981] text-[#07090C]'
+                              } text-xs font-bold cursor-pointer shrink-0`}
                             >
                               Sentar
                             </button>
@@ -2254,10 +2508,16 @@ const Dashboard = () => {
                       ) : (
                         <div className="mt-5 text-center space-y-1.5 py-2">
                           <p className="text-sm font-bold text-[#93C5FD]">
-                            Sillón disponible
+                            {activeVertical === 'nails'
+                              ? 'Mesa / Cabina disponible'
+                              : activeVertical === 'peluqueria'
+                              ? 'Tocador / Cabina disponible'
+                              : 'Sillón disponible'}
                           </p>
                           <p className="text-xs text-[#9CA3AF]">
-                            Listo para el próximo corte
+                            {isFemale
+                              ? 'Listo para la próxima clienta'
+                              : 'Listo para el próximo corte'}
                           </p>
                         </div>
                       )
@@ -2265,14 +2525,19 @@ const Dashboard = () => {
                       <div className="mt-3.5 space-y-2">
                         <div>
                           <span className="text-[11px] text-[#9CA3AF] block">
-                            En el sillón:
+                            {isFemale ? 'Atendiendo a:' : 'En el sillón:'}
                           </span>
                           <p className="text-base font-serif font-bold text-white truncate">
                             {chair.clientName}
                           </p>
                         </div>
-                        <div className="px-3 py-2 rounded-xl bg-[#0A0C0F]/90 border border-[#252A36] text-xs font-semibold text-[#34D399] truncate">
-                          ✂️ {chair.service}
+                        <div
+                          className={`px-3 py-2 rounded-xl bg-[#0A0C0F]/90 border border-[#252A36] text-xs font-semibold ${
+                            isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'
+                          } truncate`}
+                        >
+                          {activeVertical === 'nails' ? '💅 ' : activeVertical === 'peluqueria' ? '✨ ' : '✂️ '}
+                          {chair.service}
                         </div>
                       </div>
                     )}
@@ -2290,14 +2555,16 @@ const Dashboard = () => {
                           <UserCheck size={15} />
                           <span>
                             {walkInQueue.length > 0
-                              ? `Sentar a ${walkInQueue[0].name.split(' ')[0]}`
+                              ? `Pasar a ${walkInQueue[0].name.split(' ')[0]}`
+                              : isFemale
+                              ? '+ Sentar clienta'
                               : '+ Sentar cliente'}
                           </span>
                         </button>
                       )
                     ) : (
                       <div className="space-y-2">
-                        {/* Venta cruzada en 1 toque: Bote de Polvo Mate / Cera (+12€) */}
+                        {/* Venta cruzada en 1 toque */}
                         <button
                           type="button"
                           onClick={() => {
@@ -2315,7 +2582,13 @@ const Dashboard = () => {
                         >
                           <span className="flex items-center gap-1">
                             <ShoppingBag size={12} />
-                            <span>+ Polvo Mate / Cera</span>
+                            <span>
+                              {activeVertical === 'nails'
+                                ? '+ Aceite Cutículas / Crema Spa'
+                                : activeVertical === 'peluqueria'
+                                ? '+ Champú / Sérum Capilar'
+                                : '+ Polvo Mate / Cera'}
+                            </span>
                           </span>
                           <span className="font-mono font-black">
                             {chairProductAddon[chair.id] ? '✓ +12€' : '+12€'}
@@ -2328,17 +2601,21 @@ const Dashboard = () => {
                             type="button"
                             onClick={() => handleFinishChair(chair.id, 'cash')}
                             className="btn-author !py-2.5 !px-2 text-[11px] cursor-pointer"
-                            title="Cobrar en efectivo, sumar comisión y liberar sillón"
+                            title="Cobrar en efectivo, sumar comisión y liberar puesto"
                           >
                             <Banknote size={14} />
-                            <span>Terminar corte</span>
+                            <span>{isFemale ? 'Terminar servicio' : 'Terminar corte'}</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => handleFinishChair(chair.id, 'bizum')}
-                            className="py-2.5 px-2 rounded-xl bg-[#141820] hover:bg-[#10B981] text-[#34D399] hover:text-[#07090C] border border-[#10B981]/50 text-[11px] font-black uppercase flex items-center justify-center gap-1 transition-all cursor-pointer"
-                            title="Cobrar por Bizum o Tarjeta, sumar comisión y liberar sillón"
+                            className={`py-2.5 px-2 rounded-xl bg-[#141820] ${
+                              isFemale
+                                ? 'hover:bg-[#EC4899] text-[#F9A8D4] hover:text-white border border-[#EC4899]/50'
+                                : 'hover:bg-[#10B981] text-[#34D399] hover:text-[#07090C] border border-[#10B981]/50'
+                            } text-[11px] font-black uppercase flex items-center justify-center gap-1 transition-all cursor-pointer`}
+                            title="Cobrar por Bizum o Tarjeta, sumar comisión y liberar puesto"
                           >
                             <CreditCard size={14} />
                             <span>📱 Bizum / Tarj.</span>
@@ -2351,7 +2628,15 @@ const Dashboard = () => {
                             onClick={() => handleToggleChairType(chair.id)}
                             className="text-[#9CA3AF] hover:text-white cursor-pointer"
                           >
-                            {chair.status === 'BEARD'
+                            {activeVertical === 'nails'
+                              ? chair.status === 'BEARD'
+                                ? 'Pasar a Manicura'
+                                : 'Cambiar a Pedicura/Spa'
+                              : activeVertical === 'peluqueria'
+                              ? chair.status === 'BEARD'
+                                ? 'Pasar a Color/Corte'
+                                : 'Cambiar a Cabina Facial'
+                              : chair.status === 'BEARD'
                               ? 'Pasar a Corte'
                               : 'Cambiar a Barba'}
                           </button>
@@ -2363,7 +2648,9 @@ const Dashboard = () => {
                                 soundFx.playClick();
                                 navigate(`/clients/${chair.clientId}`);
                               }}
-                              className="text-[#34D399] hover:underline font-bold cursor-pointer"
+                              className={`${
+                                isFemale ? 'text-[#F9A8D4]' : 'text-[#34D399]'
+                              } hover:underline font-bold cursor-pointer`}
                             >
                               Ver su ficha →
                             </button>

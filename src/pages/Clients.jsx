@@ -3,16 +3,21 @@ import { Search, Plus, User, Flame, Ticket, Zap } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
 import ClientBentoCard from '../components/ClientBentoCard';
 import { useClients, getFadeAlert, normalizeText } from '../context/ClientContext';
+import { useShop } from '../context/ShopContext';
+import { getShopVertical, isFemaleVertical } from '../lib/shopUtils';
 import { soundFx } from '../lib/soundFx';
 
 /**
- * Directorio Visual de Clientes con Tarjetas 3D Giratorias
+ * Directorio Visual de Clientes / Clientas con Tarjetas 3D Giratorias
  */
 const Clients = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'vip' | 'urgent' | 'walkin'
-  const { clients, addClient } = useClients();
+  const { clients, addClient, businessMode } = useClients();
+  const shopCtx = useShop();
+  const activeVertical = getShopVertical(shopCtx?.activeShop, shopCtx?.activeShopSlug, businessMode);
+  const isFemale = isFemaleVertical(activeVertical);
 
   const handleCreateClient = (newClientData) => {
     addClient(newClientData);
@@ -58,22 +63,43 @@ const Clients = () => {
   });
 
   const filterTabs = [
-    { id: 'all', label: `Todos (${clients.length})`, icon: User },
+    { id: 'all', label: `${isFemale ? 'Todas' : 'Todos'} (${clients.length})`, icon: User },
     { id: 'vip', label: '🎟️ Con Bono VIP', icon: Ticket },
-    { id: 'urgent', label: '🔥 Toca Repaso', icon: Flame },
+    {
+      id: 'urgent',
+      label:
+        activeVertical === 'nails'
+          ? '💅 Toca Relleno'
+          : activeVertical === 'peluqueria'
+          ? '✨ Toca Retoque'
+          : '🔥 Toca Repaso',
+      icon: Flame,
+    },
     { id: 'walkin', label: '⚡ Sin Bono', icon: Zap },
   ];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Cabecera Clara */}
-      <header className="luxury-card p-5 sm:p-6 border-l-4 border-l-[#10B981] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <header
+        className={`luxury-card p-5 sm:p-6 border-l-4 ${
+          isFemale ? 'border-l-[#EC4899]' : 'border-l-[#10B981]'
+        } flex flex-col sm:flex-row sm:items-center justify-between gap-4`}
+      >
         <div>
           <h1 className="text-2xl sm:text-3xl font-serif font-black text-white tracking-tight uppercase">
-            Tus Clientes · Tarjetas 3D
+            {activeVertical === 'nails'
+              ? 'Tus Clientas · Tarjetas 3D de Uñas'
+              : activeVertical === 'peluqueria'
+              ? 'Tus Clientas · Pasaporte 3D Color & Cabina'
+              : 'Tus Clientes · Tarjetas 3D'}
           </h1>
           <p className="text-xs sm:text-sm text-[#D1D5DB] mt-1">
-            Toca una tarjeta para girarla, ver con qué peine se corta y apuntar su visita de hoy al instante.
+            {activeVertical === 'nails'
+              ? 'Toca una tarjeta para girarla, ver su forma, talla, acrílico/rubber y apuntar su diseño de hoy en 1 toque.'
+              : activeVertical === 'peluqueria'
+              ? 'Toca una tarjeta para girarla, ver su fórmula exacta de tinte/mechas o protocolo facial y repetir hoy en 1 toque.'
+              : 'Toca una tarjeta para girarla, ver con qué peine se corta y apuntar su visita de hoy al instante.'}
           </p>
         </div>
 
@@ -86,7 +112,7 @@ const Clients = () => {
           className="btn-author self-start sm:self-auto cursor-pointer shrink-0"
         >
           <Plus size={17} />
-          <span>Nuevo Cliente</span>
+          <span>{isFemale ? 'Nueva Clienta' : 'Nuevo Cliente'}</span>
         </button>
       </header>
 
@@ -94,15 +120,25 @@ const Clients = () => {
       <div className="space-y-3">
         <div className="relative w-full">
           <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#10B981]"
+            className={`absolute left-4 top-1/2 -translate-y-1/2 ${
+              isFemale ? 'text-[#EC4899]' : 'text-[#10B981]'
+            }`}
             size={18}
           />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por nombre, móvil o tipo de corte (ej. Skin Fade, #0.5)..."
-            className="w-full pl-11 pr-4 py-3.5 bg-[#141820]/90 backdrop-blur-md border border-[#262C3A] rounded-xl text-sm text-white placeholder-[#6B7280] focus:outline-none focus:border-[#10B981] transition-all"
+            placeholder={
+              activeVertical === 'nails'
+                ? 'Buscar por nombre, móvil o diseño (ej. Acrílicas, Almendra, Talla M, Baby Boomer)...'
+                : activeVertical === 'peluqueria'
+                ? 'Buscar por nombre, móvil o fórmula (ej. Balayage, Tinte 7.1, Higiene Facial, Radiofrecuencia)...'
+                : 'Buscar por nombre, móvil o tipo de corte (ej. Skin Fade, #0.5)...'
+            }
+            className={`w-full pl-11 pr-4 py-3.5 bg-[#141820]/90 backdrop-blur-md border border-[#262C3A] rounded-xl text-sm text-white placeholder-[#6B7280] focus:outline-none ${
+              isFemale ? 'focus:border-[#EC4899]' : 'focus:border-[#10B981]'
+            } transition-all`}
           />
         </div>
 
@@ -119,8 +155,10 @@ const Clients = () => {
                 }}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border ${
                   isActive
-                    ? 'bg-[#10B981] text-[#07090C] border-[#34D399] shadow-[2px_2px_0px_#065F46]'
-                    : 'bg-[#141820]/90 backdrop-blur-md text-[#D1D5DB] border-[#262C3A] hover:text-white hover:border-[#10B981]/50'
+                    ? isFemale
+                      ? 'bg-[#EC4899] text-white border-[#F472B6] shadow-[2px_2px_0px_#9D174D]'
+                      : 'bg-[#10B981] text-[#07090C] border-[#34D399] shadow-[2px_2px_0px_#065F46]'
+                    : 'bg-[#141820]/90 backdrop-blur-md text-[#D1D5DB] border-[#262C3A] hover:text-white'
                 }`}
               >
                 {tab.label}
