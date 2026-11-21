@@ -154,11 +154,13 @@ const Dashboard = () => {
   const {
     activeShop,
     activeShopSlug,
+    resolvedPin,
     lastSyncTime,
     needsPinSync,
     forceSyncNow,
     updateShop,
   } = useShop();
+  const shopPin = resolvedPin || activeShop?.pin || '';
 
   const navigate = useNavigate();
   const outletCtx = useOutletContext() || {};
@@ -276,16 +278,44 @@ const Dashboard = () => {
     rgpd: false,
   });
 
-  // Estado interactivo de los sillones del salón (derivado dinámicamente de activeShop.barbers)
+  // Estado interactivo de los sillones del salón (derivado dinámicamente de activeShop.barbers, preservando clientes sentados durante sync)
   const [chairs, setChairs] = useState(() => buildChairsForShop(activeShop, activeShopSlug));
+  const prevChairsSlugRef = useRef(activeShopSlug);
+  const barbersSignature = useMemo(() => JSON.stringify(activeShop?.barbers || []), [activeShop?.barbers]);
 
   useEffect(() => {
     const sales = loadShopDailySales(activeShopSlug);
     setDailySales(sales);
     setCompletedToday(sales.length);
     setReviewQueue(loadShopReviewQueue(activeShopSlug));
-    setChairs(buildChairsForShop(activeShop, activeShopSlug));
-  }, [activeShopSlug, activeShop]);
+  }, [activeShopSlug]);
+
+  useEffect(() => {
+    const nextBaseChairs = buildChairsForShop(activeShop, activeShopSlug);
+    const isSameSlug = prevChairsSlugRef.current === activeShopSlug;
+    prevChairsSlugRef.current = activeShopSlug;
+    setChairs((prev) => {
+      if (!isSameSlug || !Array.isArray(prev) || prev.length === 0) {
+        return nextBaseChairs;
+      }
+      // Preserve any occupied chair state while updating barber names/specialties or adding/removing chairs
+      return nextBaseChairs.map((baseCh) => {
+        const prevCh = prev.find(
+          (p) => (baseCh.barberId && p.barberId === baseCh.barberId) || p.id === baseCh.id
+        );
+        if (prevCh && prevCh.status !== 'WALKIN') {
+          return {
+            ...baseCh,
+            status: prevCh.status,
+            clientId: prevCh.clientId,
+            clientName: prevCh.clientName,
+            service: prevCh.service,
+          };
+        }
+        return baseCh;
+      });
+    });
+  }, [activeShopSlug, barbersSignature, activeShop]);
 
   // Tactile Opening Hours Editor State (hoursByDay & workDays)
   const [draftSchedule, setDraftSchedule] = useState(() => ({
@@ -301,6 +331,8 @@ const Dashboard = () => {
       0: { openTime: activeShop?.schedule?.hoursByDay?.[0]?.openTime || '10:00', closeTime: activeShop?.schedule?.hoursByDay?.[0]?.closeTime || '15:00' },
     },
   }));
+
+  const scheduleSignature = useMemo(() => JSON.stringify(activeShop?.schedule || {}), [activeShop?.schedule]);
 
   useEffect(() => {
     const sch = activeShop?.schedule || {};
@@ -320,7 +352,7 @@ const Dashboard = () => {
         0: { openTime: hbd[0]?.openTime || hbd['0']?.openTime || '10:00', closeTime: hbd[0]?.closeTime || hbd['0']?.closeTime || '15:00' },
       },
     });
-  }, [activeShop]);
+  }, [activeShopSlug, scheduleSignature, activeShop?.schedule]);
 
   const handleSaveShopSchedule = async () => {
     soundFx.playClick();
@@ -344,7 +376,7 @@ const Dashboard = () => {
       activeShopSlug,
       'update_shop_schedule',
       { schedule: updatedSchedule },
-      activeShop?.pin || ''
+      shopPin
     );
     if (updateShop) {
       await updateShop(activeShopSlug, { schedule: updatedSchedule }).catch(() => {});
@@ -638,7 +670,9 @@ const Dashboard = () => {
 
     const shopBarbers = Array.isArray(activeShop?.barbers) && activeShop.barbers.length > 0
       ? activeShop.barbers
-      : [{ name: 'REX' }, { name: 'KIKO' }, { name: 'NICO' }];
+      : activeShopSlug === DEFAULT_SHOP_SLUG
+      ? [{ name: 'REX' }, { name: 'KIKO' }, { name: 'NICO' }]
+      : [{ name: 'Barbero' }];
 
     shopBarbers.forEach((b) => {
       const key = String(b.name || 'Barbero').toUpperCase();
@@ -694,7 +728,7 @@ const Dashboard = () => {
       totalBarberPayouts,
       totalShopNet,
     };
-  }, [dailySales, commissionRate]);
+  }, [dailySales, commissionRate, activeShop?.barbers, activeShopSlug]);
 
   // Clientes que llevan +15 días sin venir (para avisar hoy en 1 toque)
   const retouchClients = useMemo(() => {
@@ -831,7 +865,7 @@ const Dashboard = () => {
       activeShopSlug,
       'approve',
       { appointmentId: apt.id },
-      activeShop?.pin || '1234'
+      shopPin
     );
     if (res?.data?.appointments) {
       setQrAppointments(res.data.appointments);
@@ -885,7 +919,7 @@ const Dashboard = () => {
       activeShopSlug,
       'update_duration',
       { appointmentId: apt.id, durationMinutes: nextDur },
-      activeShop?.pin || '1234'
+      shopPin
     );
     showToast(`⏱ Duración de ${apt.clientName} ajustada a ${nextDur} min`);
   };
@@ -918,7 +952,7 @@ const Dashboard = () => {
         appointmentId: apt.id,
         ...patch,
       },
-      activeShop?.pin || ''
+      shopPin
     );
     showToast(`🕒 ${patch.clientName || apt.clientName} → ${nextTime} (${nextDur} min)`);
   };
@@ -943,7 +977,7 @@ const Dashboard = () => {
       activeShopSlug,
       'add_appointment',
       created,
-      activeShop?.pin || ''
+      shopPin
     );
     showToast(
       created.isBlock
@@ -961,7 +995,7 @@ const Dashboard = () => {
       activeShopSlug,
       'delete_appointment',
       { appointmentId: apt.id },
-      activeShop?.pin || ''
+      shopPin
     );
     showToast(
       apt.isBlock
@@ -986,7 +1020,7 @@ const Dashboard = () => {
       activeShopSlug,
       'update_shop_schedule',
       { services: updatedServices },
-      activeShop?.pin || ''
+      shopPin
     );
     if (updateShop) {
       await updateShop(activeShopSlug, { services: updatedServices }).catch(() => {});
@@ -1037,7 +1071,7 @@ const Dashboard = () => {
       activeShopSlug,
       'reject',
       { appointmentId: apt.id, reason: 'Cambio de hora por WhatsApp' },
-      activeShop?.pin || '1234'
+      shopPin
     );
     if (res?.data?.appointments) {
       setQrAppointments(res.data.appointments);
@@ -1103,7 +1137,7 @@ const Dashboard = () => {
       activeShopSlug,
       'seat',
       { appointmentId: apt.id, chairId: preferredChair.id },
-      activeShop?.pin || '1234'
+      shopPin
     );
     if (res?.data?.appointments) {
       setQrAppointments(res.data.appointments);

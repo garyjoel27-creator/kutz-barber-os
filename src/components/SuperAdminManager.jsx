@@ -188,11 +188,16 @@ export default function SuperAdminManager({ onClose = null, showCloseButton = fa
 
   const handleAddBarber = () => {
     soundFx.playClick();
-    const id = `b${newShopBarbers.length + 1}`;
-    setNewShopBarbers((prev) => [
-      ...prev,
-      { id, name: `Barbero ${prev.length + 1}`, role: 'Barbero', available: true }
-    ]);
+    setNewShopBarbers((prev) => {
+      let nextNum = prev.length + 1;
+      while (prev.some((b) => b.id === `b${nextNum}`)) {
+        nextNum++;
+      }
+      return [
+        ...prev,
+        { id: `b${nextNum}`, name: `Barbero ${nextNum}`, role: 'Barbero', specialty: 'Barbero', available: true }
+      ];
+    });
   };
 
   const handleRemoveBarber = (index) => {
@@ -203,11 +208,16 @@ export default function SuperAdminManager({ onClose = null, showCloseButton = fa
 
   const handleAddService = () => {
     soundFx.playClick();
-    const id = `s${newShopServices.length + 1}`;
-    setNewShopServices((prev) => [
-      ...prev,
-      { id, name: 'Corte Especial', durationMinutes: 30, price: 20 }
-    ]);
+    setNewShopServices((prev) => {
+      let nextNum = prev.length + 1;
+      while (prev.some((s) => s.id === `s${nextNum}`)) {
+        nextNum++;
+      }
+      return [
+        ...prev,
+        { id: `s${nextNum}`, name: 'Corte Especial', durationMinutes: 30, price: 20 }
+      ];
+    });
   };
 
   const handleRemoveService = (index) => {
@@ -245,23 +255,49 @@ export default function SuperAdminManager({ onClose = null, showCloseButton = fa
     }
 
     const existingTarget = editingSlug ? shopsList.find((s) => s.slug === editingSlug) : null;
+    const formattedOpen = `${String(Number(newShopStartHour) || 9).padStart(2, '0')}:00`;
+    const formattedClose = `${String(Number(newShopEndHour) || 20).padStart(2, '0')}:00`;
+    const prevOpenH = existingTarget
+      ? parseInt(String(existingTarget.schedule?.openTime || '09:00').split(':')[0], 10) || 9
+      : null;
+    const prevCloseH = existingTarget
+      ? parseInt(String(existingTarget.schedule?.closeTime || '20:00').split(':')[0], 10) || 20
+      : null;
+    const hoursChangedInAdmin =
+      existingTarget && (Number(newShopStartHour) !== prevOpenH || Number(newShopEndHour) !== prevCloseH);
+
+    let nextHoursByDay = existingTarget?.schedule?.hoursByDay;
+    if (hoursChangedInAdmin && nextHoursByDay && typeof nextHoursByDay === 'object') {
+      nextHoursByDay = Object.fromEntries(
+        Object.entries(nextHoursByDay).map(([dayKey, dayVal]) => [
+          dayKey,
+          { ...(dayVal || {}), openTime: formattedOpen, closeTime: formattedClose }
+        ])
+      );
+    }
+
     const payload = {
       slug: newShopSlug.trim(),
       name: newShopName.trim(),
       pin: newShopPin.trim(),
       phone: newShopPhone.trim(),
       address: newShopAddress.trim(),
-      barbers: newShopBarbers,
+      barbers: newShopBarbers.map((b) => ({
+        ...b,
+        role: b.role || b.specialty || 'Barbero',
+        specialty: b.specialty || b.role || 'Barbero'
+      })),
       services: newShopServices,
       status: existingTarget?.status || 'active',
       schedule: {
         ...(existingTarget?.schedule || {}),
+        ...(nextHoursByDay ? { hoursByDay: nextHoursByDay } : {}),
         startHour: Number(newShopStartHour) || 9,
         endHour: Number(newShopEndHour) || 20,
         slotMinutes: Number(newShopSlotMinutes) || 30,
         slotIntervalMinutes: Number(newShopSlotMinutes) || 30,
-        openTime: `${String(Number(newShopStartHour) || 9).padStart(2, '0')}:00`,
-        closeTime: `${String(Number(newShopEndHour) || 20).padStart(2, '0')}:00`,
+        openTime: formattedOpen,
+        closeTime: formattedClose,
         workDays: existingTarget?.schedule?.workDays || [1, 2, 3, 4, 5, 6]
       }
     };

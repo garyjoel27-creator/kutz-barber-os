@@ -23,6 +23,51 @@ import {
 
 export const ShopContext = createContext(null);
 
+function getFallbackShopForSlug(slug, storage = null, stripPin = false) {
+  const cleanSlug = normalizeShopSlug(slug) || DEFAULT_SHOP_SLUG;
+  let base;
+  if (cleanSlug === SHOP_REX_CONFIG.slug) {
+    base = { ...SHOP_REX_CONFIG };
+  } else if (cleanSlug === SHOP_JOSEH_CONFIG.slug) {
+    base = { ...SHOP_JOSEH_CONFIG };
+  } else if (cleanSlug === DEFAULT_SHOP_CONFIG.slug || cleanSlug === 'default') {
+    base = { ...DEFAULT_SHOP_CONFIG };
+  } else {
+    // Custom tenant provisioned via /admin: check local shops index first, never inherit kutz-madrid's PIN or REX/KIKO/NICO
+    let indexed = null;
+    if (storage) {
+      try {
+        const list = getLocalShopsIndex(storage);
+        indexed = Array.isArray(list) ? list.find((s) => s.slug === cleanSlug) : null;
+      } catch {
+        // ignore
+      }
+    }
+    base = {
+      ...DEFAULT_SHOP_CONFIG,
+      ...(indexed || {}),
+      slug: cleanSlug,
+      name: indexed?.name || cleanSlug.replace(/-/g, ' ').toUpperCase(),
+      pin: indexed?.pin || '',
+      phone: indexed?.phone || '',
+      address: indexed?.address || '',
+      barbers:
+        Array.isArray(indexed?.barbers) && indexed.barbers.length > 0
+          ? indexed.barbers
+          : [{ id: 'b1', name: 'Barbero Titular', role: 'Master Barber', specialty: 'Master Barber', available: true }],
+      services:
+        Array.isArray(indexed?.services) && indexed.services.length > 0
+          ? indexed.services
+          : DEFAULT_SHOP_CONFIG.services
+    };
+  }
+  if (stripPin) {
+    const { pin: _omitted, ...safe } = base;
+    return safe;
+  }
+  return base;
+}
+
 export function ShopProvider({ children, initialSlug = null, customStorage = null, customFetch = null }) {
   // Safe location extraction (supports router or standalone environment)
   let routerLocation = null;
@@ -37,6 +82,11 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
 
   const storage = useMemo(() => getEffectiveStorage(customStorage), [customStorage]);
 
+  const isPublicRoute = useMemo(() => {
+    const pathname = routerLocation?.pathname || (typeof window !== 'undefined' ? window.location?.pathname : '');
+    return isPublicBookingPath(pathname);
+  }, [routerLocation?.pathname]);
+
   // Determine initial active shop slug through the 4-tier cascade
   const initialResolvedSlug = useMemo(() => {
     if (initialSlug) return normalizeShopSlug(initialSlug);
@@ -47,13 +97,18 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
   const [activeShop, setActiveShop] = useState(() => {
     try {
       const raw = storage.getItem(`kutz_${initialResolvedSlug}_config`);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (isPublicRoute) {
+          const { pin: _p, ...safe } = parsed;
+          return safe;
+        }
+        return parsed;
+      }
     } catch {
       // fallback
     }
-    if (initialResolvedSlug === SHOP_REX_CONFIG.slug) return SHOP_REX_CONFIG;
-    if (initialResolvedSlug === SHOP_JOSEH_CONFIG.slug) return SHOP_JOSEH_CONFIG;
-    return DEFAULT_SHOP_CONFIG;
+    return getFallbackShopForSlug(initialResolvedSlug, storage, isPublicRoute);
   });
 
   const [shopsList, setShopsList] = useState(() => getLocalShopsIndex(storage));
@@ -64,11 +119,6 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
   const [outboxCount, setOutboxCount] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const [needsPinSync, setNeedsPinSync] = useState(false);
-
-  const isPublicRoute = useMemo(() => {
-    const pathname = routerLocation?.pathname || (typeof window !== 'undefined' ? window.location?.pathname : '');
-    return isPublicBookingPath(pathname);
-  }, [routerLocation?.pathname]);
 
   // Resolve persisted verified PIN for current tenant (never on public customer booking routes)
   const resolvedPin = useMemo(() => {
@@ -91,11 +141,22 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
       }
       const savedPin = storage.getItem(`kutz_${activeShopSlug}_verified_pin`);
       if (savedPin && /^\d{4}$/.test(savedPin)) return savedPin;
+      const rawCfg = storage.getItem(`kutz_${activeShopSlug}_config`);
+      if (rawCfg) {
+        const parsedCfg = JSON.parse(rawCfg);
+        if (parsedCfg?.pin && /^\d{4}$/.test(String(parsedCfg.pin))) {
+          return String(parsedCfg.pin);
+        }
+      }
     } catch {
       // ignore
     }
-    return activeShop?.pin || '';
-  }, [isPublicRoute, activeShopSlug, activeShop?.pin, routerLocation?.search, storage]);
+    if (activeShop?.slug === activeShopSlug && activeShop?.pin && /^\d{4}$/.test(String(activeShop.pin))) {
+      return String(activeShop.pin);
+    }
+    const fallback = getFallbackShopForSlug(activeShopSlug, storage, false);
+    return fallback?.pin || '';
+  }, [isPublicRoute, activeShopSlug, activeShop?.slug, activeShop?.pin, routerLocation?.search, storage]);
 
   const isPaused = useMemo(() => {
     return String(activeShop?.status || '').toLowerCase() === 'paused';
@@ -106,9 +167,10 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
 
   // Hydrate shop public config (name, barbers, services, schedule) from Netlify Blobs on any new device
   useEffect(() => {
-    if (!activeShopSlug || typeof fetch === 'undefined') return;
+    const fetchFn = customFetch || (typeof fetch !== 'undefined' ? fetch : null);
+    if (!activeShopSlug || !fetchFn) return;
     let cancelled = false;
-    fetch(`/api/shops/${encodeURIComponent(activeShopSlug)}/public-state`)
+    fetchFn(`/api/shops/${encodeURIComponent(activeShopSlug)}/public-state`)
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         return { ok: res.ok, status: res.status, data };
@@ -117,7 +179,7 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
         if (cancelled) return;
         if ((status === 403 || status === 404) && (data?.paused || data?.error === 'shop_inactive')) {
           setActiveShop((prev) => ({
-            ...(prev || {}),
+            ...(prev?.slug === activeShopSlug ? prev : {}),
             ...(data?.shop || {}),
             slug: activeShopSlug,
             status: 'paused'
@@ -126,14 +188,22 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
         }
         if (!ok || !data || !data.success || !data.shop) return;
         setActiveShop((prev) => {
-          const merged = { ...(prev || {}), ...data.shop, slug: activeShopSlug };
+          const sameTenantPrev = prev?.slug === activeShopSlug ? prev : {};
+          const merged = { ...sameTenantPrev, ...data.shop, slug: activeShopSlug };
           if (isPublicRoute) {
             delete merged.pin;
+          } else {
+            // Preserve verified/private PIN when on private barber routes, neveroverwrite private config from public route
+            const privatePin = sameTenantPrev?.pin || resolvedPin || '';
+            if (privatePin) merged.pin = privatePin;
+            try {
+              storage.setItem(`kutz_${activeShopSlug}_config`, JSON.stringify(merged));
+            } catch {
+              // ignore
+            }
           }
-          try {
-            storage.setItem(`kutz_${activeShopSlug}_config`, JSON.stringify(merged));
-          } catch {
-            // ignore
+          if (prev && JSON.stringify(prev) === JSON.stringify(merged)) {
+            return prev;
           }
           return merged;
         });
@@ -142,7 +212,7 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     return () => {
       cancelled = true;
     };
-  }, [activeShopSlug, isPublicRoute, storage]);
+  }, [activeShopSlug, isPublicRoute, resolvedPin, storage, customFetch]);
 
   // Initialize and attach SyncEngine ONLY on private barber routes (NEVER on /r/:shopSlug or /reservar)
   useEffect(() => {
@@ -168,11 +238,18 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
       engine.on('outbox', (outbox) => setOutboxCount(Array.isArray(outbox) ? outbox.length : 0)),
       engine.on('data', (data) => {
         if (data && data.config) {
-          setActiveShop((prev) => ({
-            ...(prev || {}),
-            ...data.config,
-            pin: data.config.pin || prev?.pin || resolvedPin || ''
-          }));
+          setActiveShop((prev) => {
+            const sameTenantPrev = prev?.slug === activeShopSlug ? prev : {};
+            const nextShop = {
+              ...sameTenantPrev,
+              ...data.config,
+              pin: data.config.pin || sameTenantPrev?.pin || resolvedPin || ''
+            };
+            if (prev && JSON.stringify(prev) === JSON.stringify(nextShop)) {
+              return prev;
+            }
+            return nextShop;
+          });
         }
         setLastSyncTime(Date.now());
       }),
@@ -190,64 +267,78 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     };
   }, [isPublicRoute, activeShopSlug, resolvedPin, activeShop?.pin, storage, customFetch]);
 
-  // Load shop config whenever activeShopSlug changes
-  const loadShopConfig = useCallback((slug) => {
-    const cleanSlug = normalizeShopSlug(slug);
+  // Load shop config whenever activeShopSlug or route privacy changes
+  const loadShopConfig = useCallback((slug, forPublicRoute = isPublicRoute) => {
+    const cleanSlug = normalizeShopSlug(slug) || DEFAULT_SHOP_SLUG;
     try {
       const raw = storage.getItem(`kutz_${cleanSlug}_config`);
       if (raw) {
         const parsed = JSON.parse(raw);
-        setActiveShop(parsed);
-        return parsed;
+        const fallback = getFallbackShopForSlug(cleanSlug, storage, false);
+        const savedPin = !forPublicRoute ? storage.getItem(`kutz_${cleanSlug}_verified_pin`) : '';
+        const merged = {
+          ...fallback,
+          ...parsed,
+          slug: cleanSlug,
+          pin: parsed.pin || savedPin || fallback.pin || ''
+        };
+        if (forPublicRoute) {
+          delete merged.pin;
+        }
+        setActiveShop((prev) => (prev && JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged));
+        return merged;
       }
     } catch {
       // ignore
     }
-    if (cleanSlug === SHOP_REX_CONFIG.slug) {
-      setActiveShop(SHOP_REX_CONFIG);
-      return SHOP_REX_CONFIG;
-    }
-    if (cleanSlug === SHOP_JOSEH_CONFIG.slug) {
-      setActiveShop(SHOP_JOSEH_CONFIG);
-      return SHOP_JOSEH_CONFIG;
-    }
-    setActiveShop(DEFAULT_SHOP_CONFIG);
-    return DEFAULT_SHOP_CONFIG;
-  }, [storage]);
+    const fallback = getFallbackShopForSlug(cleanSlug, storage, forPublicRoute);
+    setActiveShop((prev) => (prev && JSON.stringify(prev) === JSON.stringify(fallback) ? prev : fallback));
+    return fallback;
+  }, [storage, isPublicRoute]);
 
   // Switch active shop tenant
   const switchShop = useCallback((rawSlug, pin = null) => {
     const cleanSlug = normalizeShopSlug(rawSlug) || DEFAULT_SHOP_SLUG;
-    if (cleanSlug === activeShopSlug) return;
-
-    setActiveShopSlug(cleanSlug);
     try {
-      storage.setItem('kutz_active_shop_slug', cleanSlug);
+      if (!isPublicRoute) {
+        storage.setItem('kutz_active_shop_slug', cleanSlug);
+      }
+      if (pin && /^\d{4}$/.test(String(pin))) {
+        storage.setItem(`kutz_${cleanSlug}_verified_pin`, String(pin));
+      }
     } catch {
       // ignore storage error
     }
 
-    const cfg = loadShopConfig(cleanSlug);
-    if (syncEngineRef.current) {
+    if (cleanSlug !== activeShopSlug) {
+      setActiveShopSlug(cleanSlug);
+    }
+
+    const cfg = loadShopConfig(cleanSlug, isPublicRoute);
+    if (syncEngineRef.current && !isPublicRoute) {
       syncEngineRef.current.switchShop(cleanSlug, pin || cfg?.pin || '');
     }
-  }, [activeShopSlug, storage, loadShopConfig]);
+  }, [activeShopSlug, isPublicRoute, storage, loadShopConfig]);
 
-  // Synchronize activeShopSlug when URL path (/r/:slug) or query (?shop=:slug) changes
+  // Persist activeShopSlug on private routes & synchronize when URL path (/r/:slug) or query (?shop=:slug) or privacy changes
   useEffect(() => {
     const pathname = routerLocation?.pathname || (typeof window !== 'undefined' ? window.location?.pathname : '');
     const search = routerLocation?.search || (typeof window !== 'undefined' ? window.location?.search : '');
     const hasExplicitUrlTenant = /^\/r\/[^/?#]+/i.test(pathname || '') || /[?&](shop|shopSlug)=/i.test(search || '');
-    if (hasExplicitUrlTenant && initialResolvedSlug && initialResolvedSlug !== activeShopSlug) {
-      setActiveShopSlug(initialResolvedSlug);
+    const targetSlug = hasExplicitUrlTenant && initialResolvedSlug ? initialResolvedSlug : activeShopSlug;
+
+    if (targetSlug && targetSlug !== activeShopSlug) {
+      setActiveShopSlug(targetSlug);
+    }
+    if (!isPublicRoute && targetSlug) {
       try {
-        storage.setItem('kutz_active_shop_slug', initialResolvedSlug);
+        storage.setItem('kutz_active_shop_slug', targetSlug);
       } catch {
         // ignore
       }
-      loadShopConfig(initialResolvedSlug);
     }
-  }, [initialResolvedSlug, activeShopSlug, routerLocation?.pathname, routerLocation?.search, storage, loadShopConfig]);
+    loadShopConfig(targetSlug, isPublicRoute);
+  }, [initialResolvedSlug, activeShopSlug, isPublicRoute, routerLocation?.pathname, routerLocation?.search, storage, loadShopConfig]);
 
   // Refresh shops list from serverless backend or local fallback
   const refreshShops = useCallback(async (adminKey = 'kutz-superadmin-2026') => {
@@ -357,7 +448,8 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     const cleanPin = String(pinAttempt || '').trim();
     if (!/^\d{4}$/.test(cleanPin)) return { success: false, error: 'PIN inválido' };
 
-    if (typeof fetch === 'undefined') {
+    const fetchFn = customFetch || (typeof fetch !== 'undefined' ? fetch : null);
+    if (!fetchFn) {
       try {
         storage.setItem(`kutz_${activeShopSlug}_verified_pin`, cleanPin);
       } catch {
@@ -368,7 +460,7 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     }
 
     try {
-      const res = await fetch(`/api/shops/${encodeURIComponent(activeShopSlug)}/sync`, {
+      const res = await fetchFn(`/api/shops/${encodeURIComponent(activeShopSlug)}/sync`, {
         method: 'GET',
         headers: {
           'x-shop-pin': cleanPin,
@@ -416,7 +508,7 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     } catch {
       return { success: false, error: 'Error de conexión' };
     }
-  }, [activeShopSlug, storage]);
+  }, [activeShopSlug, storage, customFetch]);
 
   const forceSyncNow = useCallback(async () => {
     if (syncEngineRef.current) {
@@ -432,6 +524,8 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     isLoading,
     error,
     isPaused,
+    isPublicRoute,
+    resolvedPin,
     isSuperAdminOpen,
     syncStatus,
     outboxCount,
@@ -454,6 +548,8 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     isLoading,
     error,
     isPaused,
+    isPublicRoute,
+    resolvedPin,
     isSuperAdminOpen,
     syncStatus,
     outboxCount,

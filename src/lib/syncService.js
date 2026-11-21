@@ -1009,7 +1009,11 @@ export async function provisionShop(shopData, adminKey = 'kutz-superadmin-2026',
   saveLocalShopsIndex(localIndex, storage);
 
   try {
-    storage.setItem(`kutz_${cleanSlug}_config`, JSON.stringify(fullShop));
+    const savedShop = responseData?.shop || fullShop;
+    storage.setItem(`kutz_${cleanSlug}_config`, JSON.stringify(savedShop));
+    if (savedShop?.pin && /^\d{4}$/.test(String(savedShop.pin))) {
+      storage.setItem(`kutz_${cleanSlug}_verified_pin`, String(savedShop.pin));
+    }
     storage.setItem(`kutz_${cleanSlug}_appointments`, JSON.stringify([]));
     storage.setItem(`kutz_${cleanSlug}_queue`, JSON.stringify([]));
     storage.setItem(`kutz_${cleanSlug}_clients`, JSON.stringify([]));
@@ -1049,6 +1053,13 @@ export async function updateShopStatus(slug, status, adminKey = 'kutz-superadmin
         // Update local
         const index = getLocalShopsIndex(storage).map(s => s.slug === cleanSlug ? { ...s, status: normalizedStatus } : s);
         saveLocalShopsIndex(index, storage);
+        try {
+          if (data?.shop) {
+            storage.setItem(`kutz_${cleanSlug}_config`, JSON.stringify(data.shop));
+          }
+        } catch {
+          // ignore
+        }
         return { success: true, slug: cleanSlug, status: normalizedStatus, shop: data.shop };
       }
     } catch {
@@ -1083,6 +1094,7 @@ export async function updateShopConfig(slug, updates, adminKey = 'kutz-superadmi
   const fetcher = options.fetch || (typeof fetch !== 'undefined' ? fetch : null);
   const storage = getEffectiveStorage(options.storage);
 
+  let networkShop = null;
   if (isNavigatorOnline() && fetcher) {
     try {
       const res = await fetcher(`/api/admin/shops/${encodeURIComponent(cleanSlug)}`, {
@@ -1095,22 +1107,34 @@ export async function updateShopConfig(slug, updates, adminKey = 'kutz-superadmi
       });
       if (res.ok) {
         const data = await res.json();
-        return { success: true, slug: cleanSlug, shop: data.shop };
+        networkShop = data?.shop || null;
       }
     } catch {
       // fallback to local
     }
   }
 
-  // Local update
-  let updatedShop = null;
+  // Always update local storage config and shops index so any view immediately reflects the edit
+  let updatedShop = networkShop;
   try {
     const raw = storage.getItem(`kutz_${cleanSlug}_config`);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      updatedShop = { ...parsed, ...updates, slug: cleanSlug, updatedAt: Date.now() };
-      storage.setItem(`kutz_${cleanSlug}_config`, JSON.stringify(updatedShop));
+    const parsed = raw ? JSON.parse(raw) : {};
+    updatedShop = networkShop || { ...parsed, ...updates, slug: cleanSlug, updatedAt: Date.now() };
+    storage.setItem(`kutz_${cleanSlug}_config`, JSON.stringify(updatedShop));
+    if (updatedShop?.pin && /^\d{4}$/.test(String(updatedShop.pin))) {
+      storage.setItem(`kutz_${cleanSlug}_verified_pin`, String(updatedShop.pin));
     }
+    const index = getLocalShopsIndex(storage).map((s) =>
+      s.slug === cleanSlug
+        ? {
+            ...s,
+            ...updatedShop,
+            barberCount: Array.isArray(updatedShop.barbers) ? updatedShop.barbers.length : s.barberCount,
+            servicesCount: Array.isArray(updatedShop.services) ? updatedShop.services.length : s.servicesCount
+          }
+        : s
+    );
+    saveLocalShopsIndex(index, storage);
   } catch {
     // ignore storage error
   }

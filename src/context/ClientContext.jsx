@@ -797,9 +797,12 @@ export const ClientProvider = ({ children }) => {
   const activeShopSlug = shopCtx?.activeShopSlug || DEFAULT_SHOP_SLUG;
   const activeShop = shopCtx?.activeShop || null;
   const lastSyncTime = shopCtx?.lastSyncTime || null;
+  const effectivePin = shopCtx?.resolvedPin || activeShop?.pin || '';
 
   const isPublicRoute =
-    typeof window !== 'undefined' && isPublicBookingPath(window.location?.pathname || '');
+    shopCtx?.isPublicRoute !== undefined
+      ? Boolean(shopCtx.isPublicRoute)
+      : typeof window !== 'undefined' && isPublicBookingPath(window.location?.pathname || '');
 
   // Helper to filter out fake Madrid demo clients from real tenant barbershops
   const stripDemoMadridClients = useCallback((list, slug) => {
@@ -849,8 +852,8 @@ export const ClientProvider = ({ children }) => {
 
   // Load tenant-isolated clients list
   const loadTenantClients = useCallback(
-    (slug) => {
-      if (typeof window !== 'undefined' && isPublicBookingPath(window.location?.pathname || '')) {
+    (slug, forPublic = isPublicRoute) => {
+      if (forPublic) {
         return [];
       }
       const keys = getShopStorageKeys(slug);
@@ -901,14 +904,14 @@ export const ClientProvider = ({ children }) => {
       }
       return slug === DEFAULT_SHOP_SLUG ? INITIAL_BARBER_CLIENTS : [];
     },
-    [stripDemoMadridClients]
+    [stripDemoMadridClients, isPublicRoute]
   );
 
-  const [clients, setClients] = useState(() => loadTenantClients(activeShopSlug));
+  const [clients, setClients] = useState(() => loadTenantClients(activeShopSlug, isPublicRoute));
 
   // --- 1. ESTADO DE COLA VIVA (WALK-IN QUEUE) AISLADO POR BARBERÍA ---
-  const loadTenantQueue = useCallback((slug) => {
-    if (typeof window !== 'undefined' && isPublicBookingPath(window.location?.pathname || '')) {
+  const loadTenantQueue = useCallback((slug, forPublic = isPublicRoute) => {
+    if (forPublic) {
       return [];
     }
     const keys = getShopStorageKeys(slug);
@@ -945,13 +948,13 @@ export const ClientProvider = ({ children }) => {
       // ignore
     }
     return [];
-  }, []);
+  }, [isPublicRoute]);
 
-  const [walkInQueue, setWalkInQueue] = useState(() => loadTenantQueue(activeShopSlug));
+  const [walkInQueue, setWalkInQueue] = useState(() => loadTenantQueue(activeShopSlug, isPublicRoute));
 
   // --- 2. LISTA DE ESPERA Y RELLENA HUECOS FLASH AISLADA POR BARBERÍA ---
-  const loadTenantWaitlist = useCallback((slug) => {
-    if (typeof window !== 'undefined' && isPublicBookingPath(window.location?.pathname || '')) {
+  const loadTenantWaitlist = useCallback((slug, forPublic = isPublicRoute) => {
+    if (forPublic) {
       return [];
     }
     try {
@@ -985,21 +988,27 @@ export const ClientProvider = ({ children }) => {
       // ignore
     }
     return [];
-  }, []);
+  }, [isPublicRoute]);
 
-  const [waitlist, setWaitlist] = useState(() => loadTenantWaitlist(activeShopSlug));
+  const [waitlist, setWaitlist] = useState(() => loadTenantWaitlist(activeShopSlug, isPublicRoute));
+  // Tracks which tenant slug the current clients/queue/waitlist state belongs to so persistence effects never cross-contaminate on switch
+  const [hydratedSlug, setHydratedSlug] = useState(() => (isPublicRoute ? null : activeShopSlug));
 
-  // Re-hydrate tenant clients & queue whenever activeShopSlug or remote sync completes
+  // Re-hydrate tenant clients & queue whenever activeShopSlug, route privacy, or remote sync completes
   useEffect(() => {
-    if (isPublicRoute) return;
-    setClients(loadTenantClients(activeShopSlug));
-    setWalkInQueue(loadTenantQueue(activeShopSlug));
-    setWaitlist(loadTenantWaitlist(activeShopSlug));
+    if (isPublicRoute) {
+      setHydratedSlug(null);
+      return;
+    }
+    setClients(loadTenantClients(activeShopSlug, false));
+    setWalkInQueue(loadTenantQueue(activeShopSlug, false));
+    setWaitlist(loadTenantWaitlist(activeShopSlug, false));
+    setHydratedSlug(activeShopSlug);
   }, [activeShopSlug, lastSyncTime, isPublicRoute, loadTenantClients, loadTenantQueue, loadTenantWaitlist]);
 
-  // Persist walkInQueue to tenant storage
+  // Persist walkInQueue to tenant storage (only when state is hydrated for activeShopSlug)
   useEffect(() => {
-    if (isPublicRoute) return;
+    if (isPublicRoute || hydratedSlug !== activeShopSlug) return;
     try {
       const keys = getShopStorageKeys(activeShopSlug);
       safeSetItem(keys.QUEUE, walkInQueue);
@@ -1009,11 +1018,11 @@ export const ClientProvider = ({ children }) => {
     } catch (e) {
       console.warn('Error guardando walkInQueue:', e);
     }
-  }, [walkInQueue, activeShopSlug, isPublicRoute]);
+  }, [walkInQueue, activeShopSlug, isPublicRoute, hydratedSlug]);
 
-  // Persist waitlist to tenant storage
+  // Persist waitlist to tenant storage (only when state is hydrated for activeShopSlug)
   useEffect(() => {
-    if (isPublicRoute) return;
+    if (isPublicRoute || hydratedSlug !== activeShopSlug) return;
     try {
       localStorage.setItem(`kutz_${activeShopSlug}_waitlist`, JSON.stringify(waitlist));
       if (activeShopSlug === DEFAULT_SHOP_SLUG) {
@@ -1022,17 +1031,17 @@ export const ClientProvider = ({ children }) => {
     } catch (e) {
       console.warn('Error guardando waitlist:', e);
     }
-  }, [waitlist, activeShopSlug, isPublicRoute]);
+  }, [waitlist, activeShopSlug, isPublicRoute, hydratedSlug]);
 
   // Guardar clientes con protección contra QuotaExceededError y aislamiento por barbería
   useEffect(() => {
-    if (isPublicRoute) return;
+    if (isPublicRoute || hydratedSlug !== activeShopSlug) return;
     const keys = getShopStorageKeys(activeShopSlug);
     safeSetItem(keys.CLIENTS, clients);
     if (activeShopSlug === DEFAULT_SHOP_SLUG) {
       saveClientsToStorage(clients);
     }
-  }, [clients, activeShopSlug, isPublicRoute]);
+  }, [clients, activeShopSlug, isPublicRoute, hydratedSlug]);
 
   // Helper to sync client mutation to Netlify Blobs
   const syncClientUpsert = useCallback(
@@ -1042,10 +1051,10 @@ export const ClientProvider = ({ children }) => {
         activeShopSlug,
         'upsert_client',
         clientObj,
-        activeShop?.pin || ''
+        effectivePin
       ).catch(() => {});
     },
-    [activeShopSlug, activeShop?.pin, isPublicRoute]
+    [activeShopSlug, effectivePin, isPublicRoute]
   );
 
   const addWalkIn = (entry) => {
@@ -1068,7 +1077,7 @@ export const ClientProvider = ({ children }) => {
         activeShopSlug,
         'add_walkin',
         newEntry,
-        activeShop?.pin || ''
+        effectivePin
       ).catch(() => {});
     }
     return newEntry;
@@ -1081,7 +1090,7 @@ export const ClientProvider = ({ children }) => {
         activeShopSlug,
         'remove_walkin',
         { queueId },
-        activeShop?.pin || ''
+        effectivePin
       ).catch(() => {});
     }
   };
@@ -1213,7 +1222,7 @@ export const ClientProvider = ({ children }) => {
         activeShopSlug,
         'delete_client',
         { clientId },
-        activeShop?.pin || ''
+        effectivePin
       ).catch(() => {});
     }
   };
