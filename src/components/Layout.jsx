@@ -118,33 +118,11 @@ const Layout = () => {
   const isFemale = isFemaleVertical(activeVertical);
   const activeWallpapers = isFemale ? FEMALE_WALLPAPER_THEMES : BARBER_WALLPAPER_THEMES;
 
-  // Switch between the 3 specialties in 1 click (Barbería / Uñas & Manicura / Peluquería & Estética Sin Uñas)
-  const handleSwitchVertical = (targetVertical) => {
-    soundFx.playClick();
-    soundFx.triggerHaptic(12);
-    if (targetVertical === 'nails') {
-      if (activeVertical === 'barber' && activeShopSlug) {
-        try {
-          localStorage.setItem('kutz_last_barber_slug', activeShopSlug);
-        } catch {
-          // ignore
-        }
-      }
-      if (setBusinessMode) setBusinessMode('nails');
-      if (switchShop) switchShop('campodonico-nails', '2023');
-      setWallpaperIdx(0);
-    } else if (targetVertical === 'peluqueria') {
-      if (activeVertical === 'barber' && activeShopSlug) {
-        try {
-          localStorage.setItem('kutz_last_barber_slug', activeShopSlug);
-        } catch {
-          // ignore
-        }
-      }
-      if (setBusinessMode) setBusinessMode('peluqueria');
-      if (switchShop) switchShop('peluqueria-estetica', '2023');
-      setWallpaperIdx(1);
-    } else {
+  // Recover to clean barber mode if user previously clicked the removed female demo switcher without an explicit ?shop= URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    const explicitShop = params.get('shop') || params.get('shopSlug');
+    if (!explicitShop && isFemale) {
       let targetBarberSlug = 'kutz-madrid';
       try {
         const savedBarber = localStorage.getItem('kutz_last_barber_slug');
@@ -157,9 +135,8 @@ const Layout = () => {
       const barberPin = targetBarberSlug === 'joseh-barber' ? '2023' : '1234';
       if (setBusinessMode) setBusinessMode('barber');
       if (switchShop) switchShop(targetBarberSlug, barberPin);
-      setWallpaperIdx(0);
     }
-  };
+  }, [location.search, isFemale, setBusinessMode, switchShop]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -206,7 +183,7 @@ const Layout = () => {
         isFemale ? 'theme-rose-luxury' : ''
       }`}
     >
-      {/* Fondo Atmosférico Real (Nítido y visible, adaptado a Barbería, Nail Bar o Peluquería & Estética) */}
+      {/* Fondo Atmosférico Real (Nítido y visible) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none" aria-hidden="true">
         {currentWallpaper.url && (
           <img
@@ -238,7 +215,7 @@ const Layout = () => {
         />
       </div>
 
-      {/* Sidebar Escritorio — Limpia, Clara y Adaptable (Barbería / Uñas / Peluquería & Estética) */}
+      {/* Sidebar Escritorio — Limpia, Clara y Enfocada en Barbería */}
       <aside className="hidden md:flex w-72 bg-[#101318]/80 backdrop-blur-sm border-r border-[#252A36] flex-col justify-between shadow-[6px_0_35px_rgba(0,0,0,0.65)] z-20">
         <div className="overflow-y-auto no-scrollbar">
           {/* Marca */}
@@ -274,51 +251,6 @@ const Layout = () => {
                     ? 'Peluquería, Color & Estética (Sin Uñas)'
                     : 'Control diario de barbería'}
                 </p>
-              </div>
-            </div>
-
-            {/* Conmutador Rápido de Especialidad en 1 Clic (Barbería / Uñas Hermana / Peluquería & Estética) */}
-            <div className="mt-4 p-1.5 rounded-xl bg-[#0A0C0F]/90 border border-[#252A36] space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] px-1.5 block">
-                Modo / Especialidad en vivo:
-              </span>
-              <div className="grid grid-cols-1 gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleSwitchVertical('barber')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                    activeVertical === 'barber'
-                      ? 'bg-[#10B981] text-[#07090C]'
-                      : 'text-[#D1D5DB] hover:bg-[#141820]'
-                  }`}
-                >
-                  <span>💈 Barbería (José)</span>
-                  {activeVertical === 'barber' && <span className="text-[10px] font-black">ACTIVO</span>}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchVertical('nails')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                    activeVertical === 'nails'
-                      ? 'bg-[#EC4899] text-white'
-                      : 'text-[#D1D5DB] hover:bg-[#141820]'
-                  }`}
-                >
-                  <span>💅 Uñas & Manicura (Hermana)</span>
-                  {activeVertical === 'nails' && <span className="text-[10px] font-black">ACTIVO</span>}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchVertical('peluqueria')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                    activeVertical === 'peluqueria'
-                      ? 'bg-[#EC4899] text-white'
-                      : 'text-[#D1D5DB] hover:bg-[#141820]'
-                  }`}
-                >
-                  <span>💇‍♀️ Peluquería & Estética (Sin Uñas)</span>
-                  {activeVertical === 'peluqueria' && <span className="text-[10px] font-black">ACTIVO</span>}
-                </button>
               </div>
             </div>
 
@@ -645,48 +577,6 @@ const Layout = () => {
           </div>
         </header>
 
-        {/* Barra de cambio rápido de Especialidad en Móvil y Escritorio (1 Clic: Barbería / Uñas / Peluquería & Estética) */}
-        <div className="bg-[#101318]/90 border-b border-[#252A36] px-3 sm:px-6 py-1.5 flex items-center justify-between gap-2 z-20">
-          <span className="hidden sm:inline text-[11px] font-bold text-[#9CA3AF] shrink-0">
-            Especialidad / Demo en 1 clic:
-          </span>
-          <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
-            <button
-              type="button"
-              onClick={() => handleSwitchVertical('barber')}
-              className={`flex-1 sm:flex-initial px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-black transition-all cursor-pointer truncate ${
-                activeVertical === 'barber'
-                  ? 'bg-[#10B981] text-[#07090C] shadow-sm'
-                  : 'bg-[#141820] text-[#D1D5DB] border border-[#252A36] hover:text-white'
-              }`}
-            >
-              💈 Barbería
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSwitchVertical('nails')}
-              className={`flex-1 sm:flex-initial px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-black transition-all cursor-pointer truncate ${
-                activeVertical === 'nails'
-                  ? 'bg-[#EC4899] text-white shadow-sm'
-                  : 'bg-[#141820] text-[#D1D5DB] border border-[#252A36] hover:text-white'
-              }`}
-            >
-              💅 Uñas & Manicura
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSwitchVertical('peluqueria')}
-              className={`flex-1 sm:flex-initial px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-black transition-all cursor-pointer truncate ${
-                activeVertical === 'peluqueria'
-                  ? 'bg-[#EC4899] text-white shadow-sm'
-                  : 'bg-[#141820] text-[#D1D5DB] border border-[#252A36] hover:text-white'
-              }`}
-            >
-              💇‍♀️ Peluquería & Estética
-            </button>
-          </div>
-        </div>
-
         {/* Contenido Principal con scroll fluido */}
         <main className="flex-1 overflow-y-auto pb-24 md:pb-10 scroll-smooth">
           <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -700,7 +590,6 @@ const Layout = () => {
                 lockScreen: () => setIsPinLocked(true),
                 activeVertical,
                 isFemale,
-                switchVertical: handleSwitchVertical,
               }}
             />
           </div>

@@ -134,16 +134,18 @@ export function registerFemaleVerticalsVerificationTests(runner) {
       expect(hairData.appointment.durationMinutes).toBe(120);
     });
 
-    runner.it('FV.5: Frontend components include Rose Gold theme, female wallpapers, 1-click vertical switcher, and adapted 3D card actions', () => {
+    runner.it('FV.5: Barber Layout stays 100% clean (no multi-vertical switcher buttons) while female configs & cards remain intact', () => {
       const layoutSrc = fs.readFileSync(path.join(projectRoot, 'src/components/Layout.jsx'), 'utf8');
       const cardSrc = fs.readFileSync(path.join(projectRoot, 'src/components/ClientBentoCard.jsx'), 'utf8');
       const cssSrc = fs.readFileSync(path.join(projectRoot, 'src/index.css'), 'utf8');
       const contextSrc = fs.readFileSync(path.join(projectRoot, 'src/context/ClientContext.jsx'), 'utf8');
 
-      expect(layoutSrc.includes('FEMALE_WALLPAPER_THEMES')).toBe(true);
-      expect(layoutSrc.includes('handleSwitchVertical')).toBe(true);
-      expect(layoutSrc.includes('Uñas & Manicura')).toBe(true);
-      expect(layoutSrc.includes('Peluquería & Estética')).toBe(true);
+      // Clean Barber UI: multi-vertical switcher buttons must NOT be shown in Layout.jsx
+      expect(layoutSrc.includes('handleSwitchVertical')).toBe(false);
+      expect(layoutSrc.includes('Uñas & Manicura')).toBe(false);
+      expect(layoutSrc.includes('Peluquería & Estética')).toBe(false);
+      expect(layoutSrc.includes('Especialidad / Demo en 1 clic')).toBe(false);
+      expect(layoutSrc.includes('Modo / Especialidad en vivo')).toBe(false);
 
       expect(cardSrc.includes('✓ Repetir su diseño hoy')).toBe(true);
       expect(cardSrc.includes('✓ Repetir su fórmula hoy')).toBe(true);
