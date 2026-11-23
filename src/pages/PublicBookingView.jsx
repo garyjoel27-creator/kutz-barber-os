@@ -15,6 +15,7 @@ import {
   User,
   Smartphone,
   ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import {
@@ -26,6 +27,7 @@ import {
   isFemaleVertical,
 } from '../lib/shopUtils';
 import { BarberPinLockModal } from '../components/QRPosterModal';
+import LegalComplianceModal from '../components/LegalComplianceModal';
 import { soundFx } from '../lib/soundFx';
 
 const STYLE_PILLS = [
@@ -338,6 +340,10 @@ export default function PublicBookingView() {
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [notes, setNotes] = useState('');
+  // RGPD 1st-Layer Consent — BOTH UNCHECKED BY DEFAULT
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [acceptedWhatsapp, setAcceptedWhatsapp] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [confirmationTicket, setConfirmationTicket] = useState(null);
@@ -571,6 +577,11 @@ export default function PublicBookingView() {
       return;
     }
 
+    if (!acceptedPrivacy) {
+      setFormError('Debes aceptar la política de privacidad para reservar.');
+      return;
+    }
+
     const chosenSlotObj = slotsWithAvailability.find((s) => s.time === selectedSlot);
     if (!chosenSlotObj || !chosenSlotObj.available) {
       setFormError('La hora seleccionada no está disponible para la duración de este servicio. Elige otra hora libre.');
@@ -605,6 +616,12 @@ export default function PublicBookingView() {
       time: selectedSlot,
       indicativeStyle: selectedStyle,
       notes: notes.trim(),
+      rgpdConsent: {
+        acceptedPrivacy: true,
+        acceptedWhatsapp: Boolean(acceptedWhatsapp),
+        acceptedAt: new Date(now).toISOString(),
+        policyVersion: '2026.1',
+      },
       status: 'pending',
       createdAt: now,
     };
@@ -675,6 +692,11 @@ export default function PublicBookingView() {
       return;
     }
 
+    if (!acceptedPrivacy) {
+      setFormError('Debes aceptar la política de privacidad para reservar.');
+      return;
+    }
+
     soundFx.playClick();
     soundFx.triggerHaptic(15);
     setSubmitting(true);
@@ -718,6 +740,12 @@ export default function PublicBookingView() {
               barberId: newWalkIn.barber,
               serviceId: newWalkIn.service,
               indicativeStyle: newWalkIn.indicativeStyle,
+              rgpdConsent: {
+                acceptedPrivacy: true,
+                acceptedWhatsapp: Boolean(acceptedWhatsapp),
+                acceptedAt: new Date(now).toISOString(),
+                policyVersion: '2026.1',
+              },
             }),
           }
         ).catch(() => null);
@@ -755,6 +783,63 @@ export default function PublicBookingView() {
       setSubmitting(false);
     }
   };
+
+  const renderRgpdSection = () => (
+    <div
+      data-testid="rgpd-booking-section"
+      className="p-4 rounded-xl bg-[#101318]/95 border border-[#252A36] space-y-3 text-left"
+    >
+      <div className="p-3 rounded-xl bg-[#0A0C0F] border border-[#252A36] text-[11px] text-[#D1D5DB] space-y-1 leading-relaxed">
+        <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#34D399] flex items-center gap-1.5">
+          <ShieldCheck size={13} />
+          <span>Información básica sobre Protección de Datos (1ª capa · Art. 13 RGPD)</span>
+        </p>
+        <p><strong className="text-white">Responsable:</strong> {shopName}</p>
+        <p><strong className="text-white">Finalidad:</strong> Gestión de la cita y atención al cliente.</p>
+        <p><strong className="text-white">Legitimación:</strong> Ejecución del servicio y consentimiento expreso.</p>
+        <p><strong className="text-white">Destinatarios:</strong> No cesión a terceros salvo obligación legal; infraestructura cloud segura (Netlify, EU-US Data Privacy Framework).</p>
+        <p>
+          <strong className="text-white">Derechos:</strong> Acceso, Rectificación, Supresión, Portabilidad y Oposición ante el establecimiento.{' '}
+          <button
+            type="button"
+            onClick={() => setIsLegalModalOpen(true)}
+            className="text-[#34D399] underline hover:text-white font-bold cursor-pointer"
+          >
+            Ver Política de Privacidad y Aviso Legal
+          </button>
+        </p>
+      </div>
+
+      <div className="space-y-2.5">
+        <label className="flex items-start gap-2.5 text-xs text-[#E5E7EB] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={acceptedPrivacy}
+            onChange={(e) => {
+              setAcceptedPrivacy(e.target.checked);
+              if (e.target.checked) setFormError('');
+            }}
+            className="mt-0.5 w-4 h-4 accent-[#10B981] shrink-0 cursor-pointer"
+          />
+          <span className="leading-snug">
+            <strong className="text-[#34D399]">(Obligatorio)</strong> He leído la información básica de privacidad y acepto el tratamiento de mis datos para gestionar mi cita.
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2.5 text-xs text-[#9CA3AF] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={acceptedWhatsapp}
+            onChange={(e) => setAcceptedWhatsapp(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-[#10B981] shrink-0 cursor-pointer"
+          />
+          <span className="leading-snug">
+            <strong className="text-[#D1D5DB]">(Opcional)</strong> Acepto recibir recordatorios de cita o avisos de hueco libre por WhatsApp.
+          </span>
+        </label>
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -1020,6 +1105,8 @@ export default function PublicBookingView() {
                   setConfirmationTicket(null);
                   setClientName('');
                   setClientPhone('');
+                  setAcceptedPrivacy(false);
+                  setAcceptedWhatsapp(false);
                 }}
                 className="w-full py-3 px-4 min-h-[44px] rounded-xl bg-[#1B202B] hover:bg-[#252A36] text-xs font-bold text-[#D1D5DB] cursor-pointer"
               >
@@ -1404,6 +1491,8 @@ export default function PublicBookingView() {
                     />
                   </div>
 
+                  {renderRgpdSection()}
+
                   <button
                     type="submit"
                     disabled={submitting}
@@ -1486,6 +1575,8 @@ export default function PublicBookingView() {
                     </div>
                   </div>
 
+                  {renderRgpdSection()}
+
                   <button
                     type="submit"
                     disabled={submitting}
@@ -1505,8 +1596,17 @@ export default function PublicBookingView() {
         </div>
 
         {/* Footer con acceso protegido por PIN para el barbero */}
-        <div className="pt-8 pb-4 text-center border-t border-[#252A36]/50 mt-6 flex items-center justify-between text-xs text-[#6B7280]">
-          <span>KUTZ // BARBER OS · Reserva Directa QR</span>
+        <div className="pt-8 pb-4 text-center border-t border-[#252A36]/50 mt-6 flex flex-wrap items-center justify-between gap-2 text-xs text-[#6B7280]">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>KUTZ // BARBER OS · Reserva Directa QR</span>
+            <button
+              type="button"
+              onClick={() => setIsLegalModalOpen(true)}
+              className="text-[#9CA3AF] hover:text-[#34D399] underline cursor-pointer"
+            >
+              Privacidad &amp; Aviso Legal
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -1520,6 +1620,14 @@ export default function PublicBookingView() {
           </button>
         </div>
       </div>
+
+      <LegalComplianceModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        shop={effectiveShop}
+        shopSlug={activeShopSlug}
+        publicOnly={true}
+      />
 
       <BarberPinLockModal
         isOpen={isPinModalOpen}

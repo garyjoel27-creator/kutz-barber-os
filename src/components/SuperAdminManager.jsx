@@ -15,10 +15,12 @@ import {
   LogOut,
   MapPin,
   Phone,
-  Edit3
+  Edit3,
+  Scale
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import { normalizeShopSlug, buildCustomerPortalUrl } from '../lib/shopUtils';
+import LegalComplianceModal from './LegalComplianceModal';
 import { soundFx } from '../lib/soundFx';
 
 const VALID_MASTER_KEYS = new Set([
@@ -61,6 +63,8 @@ export default function SuperAdminManager({ onClose = null, showCloseButton = fa
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'provision'
   const [editingSlug, setEditingSlug] = useState(null);
   const [copiedSlug, setCopiedSlug] = useState(null);
+  const [copiedPanelSlug, setCopiedPanelSlug] = useState(null);
+  const [dpaShop, setDpaShop] = useState(null);
   const [revealedPins, setRevealedPins] = useState({});
 
   // Provisioning form state
@@ -179,6 +183,23 @@ export default function SuperAdminManager({ onClose = null, showCloseButton = fa
       setCopiedSlug(slug);
       setTimeout(() => setCopiedSlug(null), 2500);
     }
+  };
+
+  const handleCopyPanelLink = async (slug) => {
+    soundFx.playClick();
+    soundFx.triggerHaptic(10);
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://luminadesk-gary.netlify.app';
+    // Clean URL: omit secret PIN query parameter from shareable salon panel URLs
+    const cleanPanelUrl = `${origin}/?shop=${encodeURIComponent(slug)}`;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(cleanPanelUrl);
+      }
+    } catch {
+      // ignore
+    }
+    setCopiedPanelSlug(slug);
+    setTimeout(() => setCopiedPanelSlug(null), 2500);
   };
 
   const togglePinReveal = (slug) => {
@@ -631,6 +652,28 @@ export default function SuperAdminManager({ onClose = null, showCloseButton = fa
                       <ExternalLink size={13} />
                       <span>Ver Portal</span>
                     </a>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPanelLink(shop.slug)}
+                      className="py-2 px-3 min-h-[38px] rounded-lg bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] text-[#D1D5DB] text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      title="Copiar URL limpia del panel privado (sin PIN en la URL)"
+                    >
+                      {copiedPanelSlug === shop.slug ? <Check size={13} className="text-[#10B981]" /> : <Copy size={13} />}
+                      <span>{copiedPanelSlug === shop.slug ? '¡Copiado!' : 'Link Panel'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundFx.playClick();
+                        setDpaShop(shop);
+                      }}
+                      className="py-2 px-3 min-h-[38px] rounded-lg bg-[#141820] hover:bg-[#1B202B] border border-[#10B981]/35 text-[#34D399] text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer col-span-2 sm:col-span-2"
+                    >
+                      <Scale size={13} />
+                      <span>Contrato DPA (Art. 28)</span>
+                    </button>
                   </div>
                 </div>
               );
@@ -914,6 +957,15 @@ export default function SuperAdminManager({ onClose = null, showCloseButton = fa
           </div>
         </form>
       )}
+
+      <LegalComplianceModal
+        isOpen={Boolean(dpaShop)}
+        onClose={() => setDpaShop(null)}
+        shop={dpaShop}
+        shopSlug={dpaShop?.slug || activeShopSlug}
+        publicOnly={false}
+        initialTab="dpa"
+      />
     </div>
   );
 }

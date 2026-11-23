@@ -11,16 +11,19 @@ import LuminaMorphModal from '../components/LuminaMorphModal';
 import RGPDConsentModal from '../components/RGPDConsentModal';
 import ReelStudioModal from '../components/ReelStudioModal';
 import { useClients } from '../context/ClientContext';
+import { useShop } from '../context/ShopContext';
 import { compressImage } from '../lib/imageUtils';
 
 const ClientProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { activeShop, activeShopSlug } = useShop();
   const { 
     getClient, 
     addTreatment, 
     addPhotoToTreatment, 
     updateClientConsent,
+    deleteClient,
     calculateRetentionInsights,
     addBono,
     consumeBonoSession,
@@ -35,6 +38,8 @@ const ClientProfile = () => {
   // Modal de Consentimiento RGPD y Firma Digital
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [consentModalTab, setConsentModalTab] = useState('form');
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [arsopolNotice, setArsopolNotice] = useState('');
   
   // Refs para los inputs de archivo (Cámara directa vs Galería/Archivo)
   const cameraInputRef = useRef(null);
@@ -1356,53 +1361,162 @@ const ClientProfile = () => {
             </div>
           </div>
 
-          {/* Card Portabilidad & Exportación */}
-          <div className="bg-[#161920] rounded-3xl p-6 border border-[#262B36] shadow-lg space-y-4">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#34D399]">
-              Respaldo de Ficha & Portabilidad
-            </h3>
+          {/* Card Privacidad & Derechos ARSOPOL (Art. 15-21 RGPD) */}
+          <div
+            data-testid="arsopol-panel"
+            className="bg-[#161920] rounded-3xl p-6 border border-[#262B36] shadow-lg space-y-4"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#34D399] flex items-center gap-1.5">
+                <ShieldCheck size={16} />
+                <span>Privacidad &amp; Derechos ARSOPOL</span>
+              </h3>
+              <span className="text-[10px] font-mono text-[#9CA3AF]">Art. 15–21 RGPD</span>
+            </div>
 
             <div className="p-4 rounded-2xl bg-[#14171D] border border-[#262B36] text-xs space-y-2 font-mono">
               <div className="flex justify-between text-[11px]">
-                <span className="text-[#9CA3AF]">Total de cortes:</span>
-                <strong className="text-white">{treatments.length}</strong>
+                <span className="text-[#9CA3AF]">Responsable:</span>
+                <strong className="text-white truncate ml-2">{activeShop?.name || 'KUTZ BARBER'}</strong>
               </div>
               <div className="flex justify-between text-[11px]">
-                <span className="text-[#9CA3AF]">Fotos en Lookbook:</span>
-                <strong className="text-white">{allClientPhotos.length}</strong>
+                <span className="text-[#9CA3AF]">Historial / Fotos:</span>
+                <strong className="text-white">{treatments.length} cortes · {allClientPhotos.length} fotos</strong>
               </div>
               <div className="flex justify-between text-[11px]">
-                <span className="text-[#9CA3AF]">Estado en Barbería:</span>
-                <span className="text-[#34D399] font-bold">Cliente Activo</span>
+                <span className="text-[#9CA3AF]">Marketing / WhatsApp:</span>
+                <span className={(client.consent?.permissions?.photosMarketing || client.consent?.permissions?.communications || client.consent?.permissions?.whatsappReminders) ? 'text-[#34D399] font-bold' : 'text-[#9CA3AF]'}>
+                  {(client.consent?.permissions?.photosMarketing || client.consent?.permissions?.communications || client.consent?.permissions?.whatsappReminders) ? 'Activos' : 'Sin permisos opcionales'}
+                </span>
               </div>
+              {client.consent?.revokedAt && (
+                <div className="text-[10px] text-[#FBBF24] pt-1 border-t border-[#262B36]">
+                  Permisos opcionales revocados: {new Date(client.consent.revokedAt).toLocaleString('es-ES')}
+                </div>
+              )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                const exportPayload = {
-                  exportMetadata: {
-                    system: 'KUTZ // BARBER OS',
-                    exportedAt: new Date().toISOString()
-                  },
-                  dossier: client
-                };
-                const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                const safeName = (client.name || 'cliente').toLowerCase().replace(/[^a-z0-9]/g, '_');
-                a.download = `ficha_barber_${safeName}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              }}
-              className="w-full py-2.5 px-3 rounded-xl border border-[#262B36] bg-[#1C2029] hover:bg-[#252A36] text-[#34D399] text-xs font-mono font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
-            >
-              <Download size={14} />
-              <span>Descargar Ficha Completa (.JSON)</span>
-            </button>
+            {arsopolNotice && (
+              <div className="p-3 rounded-xl bg-[#10B981]/15 border border-[#10B981]/40 text-[#34D399] text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 size={14} className="shrink-0" />
+                <span>{arsopolNotice}</span>
+              </div>
+            )}
+
+            <div className="space-y-2.5">
+              {/* 1. Portabilidad (Art. 20 RGPD) */}
+              <button
+                type="button"
+                onClick={() => {
+                  const safeSlug = String(client.name || 'cliente')
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '') || 'cliente';
+                  const exportPayload = {
+                    legalBasis: 'Art. 20 RGPD — Derecho a la Portabilidad de Datos',
+                    exportedAt: new Date().toISOString(),
+                    policyVersion: '2026.1',
+                    responsible: {
+                      shopName: activeShop?.name || 'KUTZ // BARBER STUDIO',
+                      shopSlug: activeShopSlug || 'kutz-madrid',
+                      address: activeShop?.address || '',
+                      phone: activeShop?.phone || ''
+                    },
+                    personalData: {
+                      id: client.id,
+                      name: client.name,
+                      phone: client.phone || '',
+                      email: client.email || '',
+                      allergies: client.allergies || '',
+                      notes: client.notes || '',
+                      lastVisit: client.lastVisit || ''
+                    },
+                    serviceHistory: treatments,
+                    bonos,
+                    consent: client.consent || { signed: false }
+                  };
+                  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${safeSlug}-datos-rgpd.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  setArsopolNotice(`Portabilidad exportada: ${safeSlug}-datos-rgpd.json`);
+                  setTimeout(() => setArsopolNotice(''), 4000);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl border border-[#262B36] bg-[#1C2029] hover:bg-[#252A36] text-[#34D399] text-xs font-mono font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <Download size={14} />
+                <span>Portabilidad: Descargar datos JSON</span>
+              </button>
+
+              {/* 2. Revocar permisos opcionales */}
+              <button
+                type="button"
+                onClick={() => {
+                  const revokedAt = new Date().toISOString();
+                  const nextConsent = {
+                    ...(client.consent || { signed: false, policyVersion: '2026.1' }),
+                    revokedAt,
+                    permissions: {
+                      ...(client.consent?.permissions || {}),
+                      photosMarketing: false,
+                      communications: false,
+                      whatsappReminders: false
+                    }
+                  };
+                  updateClientConsent(client.id, nextConsent);
+                  setArsopolNotice('Permisos opcionales (Redes/Reels y WhatsApp) revocados y sincronizados.');
+                  setTimeout(() => setArsopolNotice(''), 4500);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl border border-[#F59E0B]/40 bg-[#F59E0B]/10 hover:bg-[#F59E0B]/20 text-[#FBBF24] text-xs font-mono font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <ShieldAlert size={14} />
+                <span>Revocar permisos opcionales (Redes &amp; WhatsApp)</span>
+              </button>
+
+              {/* 3. Derecho de Supresión (Art. 17 RGPD) con confirmación segura */}
+              {!isConfirmDeleteOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmDeleteOpen(true)}
+                  className="w-full py-2.5 px-3 rounded-xl border border-[#EF4444]/40 bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#FCA5A5] text-xs font-mono font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                  <span>Derecho de Supresión (Borrar datos personales)</span>
+                </button>
+              ) : (
+                <div className="p-3.5 rounded-xl bg-[#EF4444]/15 border border-[#EF4444]/60 space-y-2.5">
+                  <p className="text-[11px] text-[#FECACA] leading-snug">
+                    <strong>Confirmación de Supresión (Art. 17 RGPD):</strong> Se eliminarán permanentemente los datos personales, historial y firma de <strong>{client.name}</strong> en este dispositivo y en la nube.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmDeleteOpen(false)}
+                      className="flex-1 py-2 px-3 rounded-lg bg-[#1C2029] text-[#D1D5DB] text-xs font-bold cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteClient(client.id);
+                        navigate('/clients');
+                      }}
+                      className="flex-1 py-2 px-3 rounded-lg bg-[#EF4444] hover:bg-[#DC2626] text-white text-xs font-black cursor-pointer"
+                    >
+                      Confirmar Borrado
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>

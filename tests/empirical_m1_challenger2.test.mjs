@@ -414,7 +414,8 @@ export function registerEmpiricalSuites(runner) {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-20',
-          timeSlot: '11:00'
+          timeSlot: '11:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       const resMadrid = await bookingHandler(reqMadrid, {});
@@ -431,7 +432,8 @@ export function registerEmpiricalSuites(runner) {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-20',
-          timeSlot: '11:00'
+          timeSlot: '11:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       // Should NOT collide because shops are isolated!

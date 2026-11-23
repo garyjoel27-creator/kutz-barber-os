@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import SignaturePad from './SignaturePad';
 import { useClients } from '../context/ClientContext';
+import { useShop } from '../context/ShopContext';
 
 const RGPDConsentModal = ({ 
   isOpen, 
@@ -14,8 +15,11 @@ const RGPDConsentModal = ({
   initialTab = 'form' 
 }) => {
   const clientCtx = useClients();
+  const shopCtx = useShop();
+  const activeShop = shopCtx?.activeShop;
+  const shopName = activeShop?.name || 'KUTZ // BARBER STUDIO';
   const activeModeConfig = clientCtx?.activeModeConfig;
-  const businessMode = clientCtx?.businessMode || 'estetica';
+  const businessMode = clientCtx?.businessMode || 'barber';
   const [activeTab, setActiveTab] = useState(initialTab); // 'form' | 'document'
   
   // Las 4 capas independientes del RGPD
@@ -34,14 +38,14 @@ const RGPDConsentModal = ({
   useEffect(() => {
     if (isOpen && client) {
       setActiveTab(initialTab);
-      if (client.consent) {
+      if (client.consent?.signed) {
         setPermissions({
           treatment: !!client.consent.permissions?.treatment,
           photosPrivate: !!client.consent.permissions?.photosPrivate,
           photosMarketing: !!client.consent.permissions?.photosMarketing,
-          communications: !!client.consent.permissions?.communications,
+          communications: !!(client.consent.permissions?.communications ?? client.consent.permissions?.whatsappReminders),
         });
-        setSignatureData(client.consent.signatureImage || null);
+        setSignatureData(client.consent.signatureImage || client.consent.signatureDataUrl || null);
       } else {
         setPermissions({
           treatment: false,
@@ -82,16 +86,19 @@ const RGPDConsentModal = ({
         day: '2-digit', month: 'short', year: 'numeric', 
         hour: '2-digit', minute: '2-digit' 
       }),
+      policyVersion: '2026.1',
       signatureImage: signatureData,
+      signatureDataUrl: signatureData,
       permissions: {
         treatment: permissions.treatment,
         photosPrivate: permissions.photosPrivate,
         photosMarketing: permissions.photosMarketing,
-        communications: permissions.communications
+        communications: permissions.communications,
+        whatsappReminders: permissions.communications
       },
       documentHash: `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
-      legalNoticeVersion: 'RGPD-2026-v2.1',
-      legalCustodian: 'LuminaDesk Haute Esthétique Atelier S.L.'
+      legalNoticeVersion: '2026.1',
+      legalCustodian: shopName
     };
 
     onSaveConsent(client.id, consentRecord);
@@ -213,7 +220,7 @@ const RGPDConsentModal = ({
                   <span>Información Básica sobre Protección de Datos (Art. 13 RGPD — {activeModeConfig?.badge || 'Estética'})</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-[#f4f0eb]">
-                  <div><strong className="text-[#201d1a]">Responsable:</strong> LuminaDesk — {activeModeConfig?.shortName || 'Estética'}</div>
+                  <div><strong className="text-[#201d1a]">Responsable:</strong> {shopName}</div>
                   <div><strong className="text-[#201d1a]">Legitimación:</strong> Consentimiento explícito (Art. 9.2.a RGPD).</div>
                   <div><strong className="text-[#201d1a]">Custodia:</strong> {activeModeConfig?.rgpdCustodyText || 'Durante relación activa'}.</div>
                   <div><strong className="text-[#201d1a]">Derechos:</strong> Acceso, rectificación, supresión y portabilidad.</div>
@@ -367,7 +374,7 @@ const RGPDConsentModal = ({
                 <div className="border-b-2 border-[#201d1a] pb-4 flex justify-between items-start">
                   <div>
                     <h1 className="text-xl font-serif tracking-wider font-semibold text-[#201d1a]">
-                      LuminaDesk Haute Esthétique
+                      {shopName}
                     </h1>
                     <p className="text-[10px] text-[#8f857d] uppercase tracking-widest mt-0.5">
                       {activeModeConfig?.badge || 'Centro de Estética Avanzada & Cabina'}
@@ -397,7 +404,7 @@ const RGPDConsentModal = ({
                   <div><strong>{activeModeConfig?.clientSingular || 'Clienta'}:</strong> {client.name}</div>
                   <div><strong>Teléfono:</strong> {client.phone || 'No registrado'}</div>
                   <div><strong>Email:</strong> {client.email || 'No registrado'}</div>
-                  <div><strong>Responsable de Tratamiento:</strong> LuminaDesk — {activeModeConfig?.shortName || 'Estética'}</div>
+                  <div><strong>Responsable de Tratamiento:</strong> {shopName}</div>
                 </div>
 
                 {/* Cláusulas Legales Informativas */}

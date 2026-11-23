@@ -122,6 +122,44 @@ async function runVerification() {
     });
     assert.strictEqual(storageDump.includes('"2023"'), false, 'Public localStorage must never contain barber PIN 2023');
 
+    // Block 1 RGPD check on /r/joseh-barber: 1st-layer box, 2 unchecked checkboxes, publicOnly Legal Modal (NO DPA tab)
+    const rgpdPubCheck = await pubPage.evaluate(() => {
+      const section = document.querySelector('[data-testid="rgpd-booking-section"]');
+      const boxes = section ? Array.from(section.querySelectorAll('input[type="checkbox"]')) : [];
+      return {
+        hasSection: Boolean(section),
+        hasArt13: Boolean(section && section.textContent.includes('Art. 13 RGPD')),
+        checkboxCount: boxes.length,
+        allUnchecked: boxes.length === 2 && boxes.every((b) => b.checked === false),
+        scrollW: document.documentElement.scrollWidth,
+        innerW: window.innerWidth
+      };
+    });
+    assert.strictEqual(rgpdPubCheck.hasSection && rgpdPubCheck.hasArt13, true, 'RGPD 1st-layer Art. 13 box must render on /r/joseh-barber');
+    assert.strictEqual(rgpdPubCheck.allUnchecked, true, 'Both RGPD booking checkboxes must be unchecked by default');
+    assert.strictEqual(rgpdPubCheck.scrollW <= rgpdPubCheck.innerW, true, `/r/joseh-barber 0px overflow (${rgpdPubCheck.scrollW} <= ${rgpdPubCheck.innerW})`);
+
+    // Open public Legal Modal & verify DPA tab is HIDDEN on public route
+    await pubPage.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find((b) =>
+        b.textContent.includes('Ver Política de Privacidad y Aviso Legal')
+      );
+      if (btn) btn.click();
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    const pubLegalModal = await pubPage.evaluate(() => ({
+      hasPrivacy: document.body.textContent.includes('Política de Privacidad'),
+      hasLssi: document.body.textContent.includes('Aviso Legal (LSSI-CE)'),
+      hasDpaTab: document.body.textContent.includes('Contrato DPA (Art. 28)')
+    }));
+    assert.strictEqual(pubLegalModal.hasPrivacy && pubLegalModal.hasLssi, true, 'Public legal modal must show Privacidad & Aviso Legal');
+    assert.strictEqual(pubLegalModal.hasDpaTab, false, 'Public legal modal must NEVER expose internal Contrato DPA tab');
+    await pubPage.evaluate(() => {
+      const closeBtn = document.querySelector('[aria-label="Cerrar modal legal"]');
+      if (closeBtn) closeBtn.click();
+    });
+    await new Promise((r) => setTimeout(r, 120));
+
     // Test "Soy el Barbero" modal has Cancel/Salir and NO Demo button
     await pubPage.evaluate(() => {
       const btn = Array.from(document.querySelectorAll('button')).find((b) => b.textContent.includes('Soy el Barbero'));
@@ -251,6 +289,36 @@ async function runVerification() {
     assert.strictEqual(joseDashboardState.hasFakeRexChair, false, 'Dashboard for joseh-barber must NOT display REX/KIKO/NICO');
     assert.strictEqual(joseDashboardState.hasZeroCashier, true, 'Dashboard for joseh-barber must start at 0€ instead of fake 126€');
     assert.strictEqual(joseDashboardState.hasScheduleBtn, true, 'Dashboard must include Horario apertura editor button');
+
+    // Verify VeriFactu Shield banner inside Cash/Caja drawer + Private Legal Hub (3 tabs incl. DPA)
+    await josePage.evaluate(() => {
+      const cajaBtn = Array.from(document.querySelectorAll('button')).find((b) => b.textContent.includes('Caja Hoy'));
+      if (cajaBtn) cajaBtn.click();
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    const verifactuOk = await josePage.evaluate(() => {
+      const banner = document.querySelector('[data-testid="verifactu-shield-banner"]');
+      return Boolean(banner && banner.textContent.includes('No válido como ticket fiscal ni factura (VeriFactu)'));
+    });
+    assert.strictEqual(verifactuOk, true, 'Dashboard Cash area must display permanent VeriFactu non-fiscal banner');
+
+    // Open Private Legal Hub from mobile header icon button
+    await josePage.evaluate(() => {
+      const legalBtn = document.querySelector('[aria-label="Legal y RGPD"]');
+      if (legalBtn) legalBtn.click();
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    const privLegal = await josePage.evaluate(() => ({
+      hasDpa: document.body.textContent.includes('Contrato DPA (Art. 28)'),
+      hasPrivacy: document.body.textContent.includes('Política de Privacidad'),
+      hasLssi: document.body.textContent.includes('Aviso Legal (LSSI-CE)')
+    }));
+    assert.strictEqual(privLegal.hasDpa && privLegal.hasPrivacy && privLegal.hasLssi, true, 'Private Legal Hub must display all 3 tabs including Contrato DPA');
+    await josePage.evaluate(() => {
+      const closeBtn = document.querySelector('[aria-label="Cerrar modal legal"]');
+      if (closeBtn) closeBtn.click();
+    });
+    await new Promise((r) => setTimeout(r, 120));
 
     // Tap late afternoon slot 19:00 on VisualAgendaTimeline and verify modal opens centered in viewport (not off-screen top: -188px)
     await josePage.evaluate(() => {

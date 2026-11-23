@@ -14,6 +14,7 @@ import {
   Star,
   QrCode,
   Lock,
+  Scale,
 } from 'lucide-react';
 import AIAssistantModal from './AIAssistantModal';
 import WalkInKioskModal from './WalkInKioskModal';
@@ -22,6 +23,7 @@ import ReelStudioModal from './ReelStudioModal';
 import CommandPalette from './CommandPalette';
 import SuperAdminModal from './SuperAdminModal';
 import QRPosterModal, { BarberPinLockModal } from './QRPosterModal';
+import LegalComplianceModal from './LegalComplianceModal';
 import { useClients } from '../context/ClientContext';
 import { useShop } from '../context/ShopContext';
 import { getShopVertical, isFemaleVertical } from '../lib/shopUtils';
@@ -89,6 +91,7 @@ const Layout = () => {
   const [isCmdKOpen, setIsCmdKOpen] = useState(false);
   const [isQRPosterOpen, setIsQRPosterOpen] = useState(false);
   const [isPinLocked, setIsPinLocked] = useState(false);
+  const [isLegalOpen, setIsLegalOpen] = useState(false);
   const [walkInOpen, setWalkInOpen] = useState(true);
   const [wallpaperIdx, setWallpaperIdx] = useState(() => {
     try {
@@ -452,6 +455,18 @@ const Layout = () => {
               ● {activeShop?.status === 'paused' ? 'Pausado' : 'Online'}
             </span>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              soundFx.playClick();
+              setIsLegalOpen(true);
+            }}
+            className="w-full px-3 py-2 rounded-xl bg-[#141820]/70 hover:bg-[#1B202B] border border-[#252A36] text-[11px] font-bold text-[#9CA3AF] hover:text-[#34D399] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Scale size={13} />
+            <span>Legal &amp; RGPD · DPA</span>
+          </button>
         </div>
       </aside>
 
@@ -566,9 +581,22 @@ const Layout = () => {
               type="button"
               onClick={() => {
                 soundFx.playClick();
+                setIsLegalOpen(true);
+              }}
+              className="md:hidden p-2 min-h-[40px] min-w-[36px] rounded-xl bg-[#141820]/90 hover:bg-[#1B202B] border border-[#252A36] text-[#9CA3AF] hover:text-[#34D399] flex items-center justify-center transition-all cursor-pointer shrink-0"
+              title="Legal, RGPD y Contrato DPA"
+              aria-label="Legal y RGPD"
+            >
+              <Scale size={15} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                soundFx.playClick();
                 setIsPinLocked(true);
               }}
-              className="p-2 min-h-[40px] min-w-[38px] rounded-xl bg-[#141820]/90 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#F59E0B]/50 text-[#9CA3AF] hover:text-[#FBBF24] flex items-center justify-center transition-all cursor-pointer shrink-0"
+              className="p-2 min-h-[40px] min-w-[36px] rounded-xl bg-[#141820]/90 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#F59E0B]/50 text-[#9CA3AF] hover:text-[#FBBF24] flex items-center justify-center transition-all cursor-pointer shrink-0"
               title="Bloquear pantalla con PIN de 4 dígitos"
               aria-label="Bloquear con PIN"
             >
@@ -678,6 +706,14 @@ const Layout = () => {
         isOpen={isQRPosterOpen}
         onClose={() => setIsQRPosterOpen(false)}
         onLockScreen={() => setIsPinLocked(true)}
+      />
+
+      <LegalComplianceModal
+        isOpen={isLegalOpen}
+        onClose={() => setIsLegalOpen(false)}
+        shop={activeShop}
+        shopSlug={activeShopSlug}
+        publicOnly={false}
       />
 
       <BarberPinLockModal

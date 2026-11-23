@@ -303,6 +303,7 @@ export function BarberPinLockModal({
 }) {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [pinErrorMessage, setPinErrorMessage] = useState('');
   const [verifying, setVerifying] = useState(false);
 
   if (!isOpen) return null;
@@ -311,6 +312,7 @@ export function BarberPinLockModal({
     if (verifying) return;
     soundFx.playClick();
     setPinError(false);
+    setPinErrorMessage('');
     const next = (pinInput + digit).slice(0, 4);
     setPinInput(next);
 
@@ -325,6 +327,7 @@ export function BarberPinLockModal({
           return;
         }
         setPinError(true);
+        setPinErrorMessage(res?.error || '');
         setTimeout(() => setPinInput(''), 500);
         return;
       }
@@ -399,7 +402,7 @@ export function BarberPinLockModal({
 
         {pinError && (
           <p className="text-xs font-bold text-[#FCA5A5]">
-            PIN incorrecto para {shopName}. Verifica los 4 dígitos asignados al local.
+            {pinErrorMessage || `PIN incorrecto para ${shopName}. Verifica los 4 dígitos asignados al local.`}
           </p>
         )}
         {verifying && (

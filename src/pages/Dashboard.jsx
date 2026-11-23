@@ -371,7 +371,7 @@ const Dashboard = () => {
     setDailySales(sales);
     setCompletedToday(sales.length);
     setReviewQueue(loadShopReviewQueue(activeShopSlug));
-  }, [activeShopSlug]);
+  }, [activeShopSlug, lastSyncTime]);
 
   useEffect(() => {
     const nextBaseChairs = buildChairsForShop(activeShop, activeShopSlug);
@@ -498,6 +498,7 @@ const Dashboard = () => {
         amount: basePrice,
         productAmount: productPrice,
         method: paymentMethod,
+        timestamp: Date.now(),
         time: new Date().toLocaleTimeString('es-ES', {
           hour: '2-digit',
           minute: '2-digit',
@@ -516,6 +517,13 @@ const Dashboard = () => {
         }
         return next;
       });
+
+      dispatchBarberAction(
+        activeShopSlug,
+        'record_sale',
+        { sale: newSale },
+        shopPin
+      ).catch(() => {});
 
       setChairProductAddon((prev) => ({ ...prev, [chairId]: false }));
       const totalCharged = basePrice + productPrice;
@@ -1523,6 +1531,17 @@ const Dashboard = () => {
                 <X size={18} />
               </button>
             </div>
+            {/* Aviso legal VeriFactu permanente */}
+          </div>
+
+          <div
+            data-testid="verifactu-shield-banner"
+            className="px-3.5 py-2.5 rounded-xl bg-[#F59E0B]/12 border border-[#F59E0B]/40 text-[#FDE68A] text-[11px] font-bold flex items-center gap-2"
+          >
+            <AlertTriangle size={14} className="text-[#F59E0B] shrink-0" />
+            <span>
+              Control interno de servicios y comisiones · No válido como ticket fiscal ni factura (VeriFactu)
+            </span>
           </div>
 
           {/* 4 Indicadores Clave del Bolsillo del Dueño */}
@@ -1588,7 +1607,7 @@ const Dashboard = () => {
                     ✂️ {row.name} ({row.cuts} cortes)
                   </span>
                   <span className="text-xs text-[#9CA3AF]">
-                    Facturado: <strong className="text-white">{row.totalGenerated}€</strong>
+                    Registrado (interno): <strong className="text-white">{row.totalGenerated}€</strong>
                   </span>
                 </div>
                 <div className="text-right">

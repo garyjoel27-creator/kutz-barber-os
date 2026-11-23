@@ -296,7 +296,8 @@ export function registerSyncServiceTests(runner) {
         barberId: 'rex',
         serviceId: 'skin-fade',
         date: '2026-11-20',
-        timeSlot: '17:00'
+        timeSlot: '17:00',
+        rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
       };
 
       const req1 = new Request('http://localhost/api/shops/kutz-madrid/booking', {
@@ -335,7 +336,8 @@ export function registerSyncServiceTests(runner) {
         clientName: 'Carlos Sainz',
         clientPhone: '699 112 233',
         barberId: 'Cualquiera',
-        serviceId: 'Skin Fade Express'
+        serviceId: 'Skin Fade Express',
+        rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
       };
 
       const req = new Request('http://localhost/api/shops/kutz-madrid/booking', {
@@ -529,7 +531,8 @@ export function registerSyncServiceTests(runner) {
         barberId: 'rex',
         serviceId: 'skin-fade',
         date: '2026-11-22',
-        timeSlot: '11:00'
+        timeSlot: '11:00',
+        rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
       };
 
       const req = new Request('http://localhost/api/shops/kutz-madrid/booking', {
@@ -554,7 +557,8 @@ export function registerSyncServiceTests(runner) {
         barberId: 'rex',
         serviceId: 'skin-fade',
         date: '2026-11-20',
-        timeSlot: '22:00'
+        timeSlot: '22:00',
+        rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
       };
 
       const lateReq = new Request('http://localhost/api/shops/kutz-madrid/booking', {
@@ -576,7 +580,8 @@ export function registerSyncServiceTests(runner) {
         barberId: 'rex',
         serviceId: 'skin-fade',
         date: '2026-11-20',
-        timeSlot: '03:00'
+        timeSlot: '03:00',
+        rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
       };
 
       const earlyReq = new Request('http://localhost/api/shops/kutz-madrid/booking', {
@@ -605,7 +610,8 @@ export function registerSyncServiceTests(runner) {
             barberId: 'rex',
             serviceId: 'skin-fade',
             date: '2026-11-20',
-            timeSlot: '11:00'
+            timeSlot: '11:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         });
       });
@@ -637,7 +643,8 @@ export function registerSyncServiceTests(runner) {
             clientName: `Queue Client ${i}`,
             clientPhone: `67700011${i}`,
             barberId: 'Cualquiera',
-            serviceId: 'Skin Fade Express'
+            serviceId: 'Skin Fade Express',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         });
       });

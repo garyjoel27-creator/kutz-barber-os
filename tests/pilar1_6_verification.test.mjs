@@ -75,7 +75,8 @@ export function registerPilar1To6VerificationTests(runner) {
             clientPhone: '689014014',
             serviceId: 's1',
             date: '2026-11-23',
-            timeSlot: '11:00'
+            timeSlot: '11:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         }),
         { params: { shopSlug: 'joseh-barber' } }
@@ -280,7 +281,8 @@ export function registerPilar1To6VerificationTests(runner) {
             barberId: 'joseh',
             serviceId: 's15', // 120 min
             date: '2026-11-23',
-            timeSlot: '17:00'
+            timeSlot: '17:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         }),
         { params: { shopSlug: 'joseh-barber' } }
@@ -306,7 +308,8 @@ export function registerPilar1To6VerificationTests(runner) {
             barberId: 'joseh',
             serviceId: 's13', // 90 min
             date: '2026-11-23',
-            timeSlot: '11:00'
+            timeSlot: '11:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         }),
         { params: { shopSlug: 'joseh-barber' } }
@@ -330,7 +333,8 @@ export function registerPilar1To6VerificationTests(runner) {
             barberId: 'joseh',
             serviceId: 's5', // 30 min
             date: '2026-11-23',
-            timeSlot: '12:00'
+            timeSlot: '12:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         }),
         { params: { shopSlug: 'joseh-barber' } }
@@ -368,7 +372,8 @@ export function registerPilar1To6VerificationTests(runner) {
             clientPhone: '600333444',
             serviceId: 's1',
             date: '2026-11-23',
-            timeSlot: '15:00'
+            timeSlot: '15:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         }),
         { params: { shopSlug: 'joseh-barber' } }

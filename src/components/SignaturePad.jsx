@@ -76,6 +76,10 @@ const SignaturePad = ({ onSave, onClear, existingSignature = null }) => {
     if (isDrawing) {
       e.preventDefault();
       setIsDrawing(false);
+      const canvas = canvasRef.current;
+      if (canvas && onSave) {
+        onSave(canvas.toDataURL('image/png'));
+      }
     }
   };
 

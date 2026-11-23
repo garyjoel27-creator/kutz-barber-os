@@ -47,7 +47,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
             barberId: 'rex',
             serviceId: 'skin-fade',
             date: '2026-11-25',
-            timeSlot: '11:00'
+            timeSlot: '11:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         });
       });
@@ -78,7 +79,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
             clientName: `Walkin Client ${i}`,
             clientPhone: `68800000${i}`,
             barberId: 'Cualquiera',
-            serviceId: 'Skin Fade Express'
+            serviceId: 'Skin Fade Express',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         });
       });
@@ -107,7 +109,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-25',
-          timeSlot: '12:00'
+          timeSlot: '12:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       const res1 = await bookingHandler(req1, { params: { shopSlug: 'kutz-madrid' } });
@@ -122,7 +125,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-25',
-          timeSlot: '12:00'
+          timeSlot: '12:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       const res2 = await bookingHandler(req2, { params: { shopSlug: 'kutz-madrid' } });
@@ -144,7 +148,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-25',
-          timeSlot: '14:00'
+          timeSlot: '14:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       const resRex = await bookingHandler(reqRex, { params: { shopSlug: 'kutz-madrid' } });
@@ -159,7 +164,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
           barberId: 'kiko',
           serviceId: 'skin-fade',
           date: '2026-11-25',
-          timeSlot: '14:00'
+          timeSlot: '14:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       const resKiko = await bookingHandler(reqKiko, { params: { shopSlug: 'kutz-madrid' } });
@@ -185,7 +191,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
             barberId: 'rex',
             serviceId: 'skin-fade',
             date: '2026-11-25',
-            timeSlot: '16:00'
+            timeSlot: '16:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         });
         const resA = await bookingHandler(reqA, { params: { shopSlug: 'kutz-madrid' } });
@@ -202,7 +209,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
             barberId: 'rex',
             serviceId: 'skin-fade',
             date: '2026-11-25',
-            timeSlot: '16:00'
+            timeSlot: '16:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         });
         const resB = await bookingHandler(reqB, { params: { shopSlug: 'kutz-madrid' } });
@@ -228,7 +236,8 @@ export function registerChallenger1EmpiricalSuites(runner) {
             barberId: 'rex',
             serviceId: 'skin-fade',
             date: '2026-11-25',
-            timeSlot: '16:00'
+            timeSlot: '16:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         });
         const resC = await bookingHandler(reqC, { params: { shopSlug: 'kutz-madrid' } });
@@ -432,7 +441,8 @@ async function runChallengerSuite() {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-25',
-          timeSlot: '11:00'
+          timeSlot: '11:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
     });
@@ -475,7 +485,8 @@ async function runChallengerSuite() {
           clientName: `Walkin Client ${i}`,
           clientPhone: `68800000${i}`,
           barberId: 'Cualquiera',
-          serviceId: 'Skin Fade Express'
+          serviceId: 'Skin Fade Express',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
     });
@@ -607,7 +618,8 @@ async function runChallengerSuite() {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-25',
-          timeSlot: '16:00'
+          timeSlot: '16:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       const resA = await bookingHandler(reqA, { params: { shopSlug: 'kutz-madrid' } });
@@ -625,7 +637,8 @@ async function runChallengerSuite() {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-25',
-          timeSlot: '16:00'
+          timeSlot: '16:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       const resB = await bookingHandler(reqB, { params: { shopSlug: 'kutz-madrid' } });
@@ -652,7 +665,8 @@ async function runChallengerSuite() {
           barberId: 'rex',
           serviceId: 'skin-fade',
           date: '2026-11-25',
-          timeSlot: '16:00'
+          timeSlot: '16:00',
+          rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
         })
       });
       const resC = await bookingHandler(reqC, { params: { shopSlug: 'kutz-madrid' } });

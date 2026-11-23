@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import crypto from 'node:crypto';
 
 // Memory store fallback for local tests and environments without Netlify credentials
 const memoryStore = new Map();
@@ -578,4 +579,75 @@ export async function withShopLock(shopSlug, fn) {
 
 export function resetShopLocks() {
   shopLocks.clear();
+}
+
+// Privacy-preserving IP hash for anti brute-force rate limiting (never stores raw IP)
+export function hashClientIp(request) {
+  let rawIp = 'unknown';
+  try {
+    if (request?.headers && typeof request.headers.get === 'function') {
+      const nfIp = request.headers.get('x-nf-client-connection-ip');
+      const xff = request.headers.get('x-forwarded-for');
+      const clientIp = request.headers.get('client-ip');
+      rawIp = (nfIp || (xff ? xff.split(',')[0] : '') || clientIp || 'unknown').trim();
+    }
+  } catch {
+    rawIp = 'unknown';
+  }
+  return crypto.createHash('sha256').update(String(rawIp || 'unknown')).digest('hex').slice(0, 16);
+}
+
+// Persistent PIN Brute-Force Rate Limit Accessor (key: ratelimit_<shopSlug>_<ipHash>)
+export async function getRateLimitState(shopSlug, ipHash) {
+  const store = getKutzStore();
+  return await store.getJSON(`ratelimit_${shopSlug}_${ipHash}`);
+}
+
+export async function setRateLimitState(shopSlug, ipHash, state) {
+  const store = getKutzStore();
+  await store.setJSON(`ratelimit_${shopSlug}_${ipHash}`, state);
+}
+
+export async function clearRateLimitState(shopSlug, ipHash) {
+  const store = getKutzStore();
+  await store.delete(`ratelimit_${shopSlug}_${ipHash}`);
+}
+
+// Lightweight per-shop RGPD Audit Log (Art. 32 RGPD traceability, capped at last 100 events, zero plaintext PINs)
+export async function getAuditLog(shopSlug) {
+  const store = getKutzStore();
+  const entries = await store.getJSON(`audit_${shopSlug}`);
+  return Array.isArray(entries) ? entries : [];
+}
+
+export async function appendAuditLog(shopSlug, action, detail = {}) {
+  const store = getKutzStore();
+  const key = `audit_${shopSlug}`;
+  const existing = await store.getJSON(key);
+  const list = Array.isArray(existing) ? existing : [];
+  const safeDetail = detail && typeof detail === 'object' ? { ...detail } : { info: String(detail || '') };
+  delete safeDetail.pin;
+  delete safeDetail.providedPin;
+  delete safeDetail.password;
+  const entry = {
+    ts: new Date().toISOString(),
+    action: String(action || 'unknown'),
+    detail: safeDetail
+  };
+  const next = [...list, entry].slice(-100);
+  await store.setJSON(key, next);
+  return entry;
+}
+
+// Internal Cash Register Sales Accessor (non-fiscal internal operational control)
+export async function getShopSales(shopSlug) {
+  const store = getKutzStore();
+  const sales = await store.getJSON(`shops/${shopSlug}/sales`);
+  return Array.isArray(sales) ? sales : [];
+}
+
+export async function setShopSales(shopSlug, sales) {
+  const store = getKutzStore();
+  const safeSales = Array.isArray(sales) ? sales.slice(0, 500) : [];
+  await store.setJSON(`shops/${shopSlug}/sales`, safeSales);
 }

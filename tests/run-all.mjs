@@ -13,6 +13,7 @@ import { registerChallenger1EmpiricalSuites } from './challenger_m1_empirical.te
 import { registerM2MultiShopTests } from './m2_multishop_superadmin.test.mjs';
 import { registerPilar1To6VerificationTests } from './pilar1_6_verification.test.mjs';
 import { registerFemaleVerticalsVerificationTests } from './female_verticals_verification.test.mjs';
+import { registerBlock1LegalSecurityTests } from './block1_legal_security.test.mjs';
 
 async function main() {
   const runner = new TestRunner('KUTZ // BARBER OS & LuminaDesk Master E2E Suite');
@@ -46,6 +47,9 @@ async function main() {
 
   console.log('Loading Female Verticals (CM Campodónico Nails & Peluquería/Estética Sin Uñas) Verification Suite...');
   registerFemaleVerticalsVerificationTests(runner);
+
+  console.log('Loading Block 1 Legal, RGPD, ARSOPOL, Anti Brute-Force & VeriFactu Suite...');
+  registerBlock1LegalSecurityTests(runner);
 
   const result = await runner.execute();
 

@@ -101,7 +101,8 @@ export function registerFemaleVerticalsVerificationTests(runner) {
             barberId: 'campodonico-nails-1',
             serviceId: 'cn2', // 105 min (11:00 -> 12:45)
             date: '2026-11-23',
-            timeSlot: '11:00'
+            timeSlot: '11:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         }),
         { params: { shopSlug: 'campodonico-nails' } }
@@ -123,7 +124,8 @@ export function registerFemaleVerticalsVerificationTests(runner) {
             barberId: 'estilista-color',
             serviceId: 'pe3', // 120 min (10:00 -> 12:00)
             date: '2026-11-23',
-            timeSlot: '10:00'
+            timeSlot: '10:00',
+            rgpdConsent: { acceptedPrivacy: true, acceptedWhatsapp: false }
           })
         }),
         { params: { shopSlug: 'peluqueria-estetica' } }

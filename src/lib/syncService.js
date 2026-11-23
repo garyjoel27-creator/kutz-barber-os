@@ -67,8 +67,28 @@ export function getShopStorageKeys(shopSlug = DEFAULT_SHOP_SLUG) {
     CLIENTS: `kutz_${slug}_clients`,
     CONFIG: `kutz_${slug}_config`,
     OUTBOX: `kutz_${slug}_outbox`,
-    LAST_SYNC: `kutz_${slug}_last_sync`
+    LAST_SYNC: `kutz_${slug}_last_sync`,
+    SALES: `kutz_${slug}_daily_sales_v2`
   };
+}
+
+/**
+ * Merges remote and local internal cash register sales by sale ID without wiping local sales
+ */
+export function mergeSyncedSales(remoteSales, localSales) {
+  const remoteList = Array.isArray(remoteSales) ? remoteSales : [];
+  const localList = Array.isArray(localSales) ? localSales : [];
+  const byId = new Map();
+  for (const s of localList) {
+    if (s && s.id) byId.set(String(s.id), s);
+  }
+  for (const s of remoteList) {
+    if (s && s.id) {
+      const prev = byId.get(String(s.id)) || {};
+      byId.set(String(s.id), { ...prev, ...s });
+    }
+  }
+  return Array.from(byId.values()).sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
 }
 
 /**
@@ -278,6 +298,7 @@ export function loadLocalShopState(shopSlug = DEFAULT_SHOP_SLUG, customStorage =
   }
 
   const lastSyncedAt = safeGetItem(keys.LAST_SYNC, null, storage);
+  const dailySales = safeGetItem(keys.SALES, [], storage);
 
   return {
     shopSlug,
@@ -285,6 +306,7 @@ export function loadLocalShopState(shopSlug = DEFAULT_SHOP_SLUG, customStorage =
     appointments,
     queue: Array.isArray(queue) ? queue : [],
     clients: Array.isArray(clients) ? clients : [],
+    dailySales: Array.isArray(dailySales) ? dailySales : [],
     lastSyncedAt
   };
 }
@@ -311,6 +333,10 @@ export function saveLocalShopState(shopSlug = DEFAULT_SHOP_SLUG, state = {}, cus
   }
   if (state.clients) {
     const res = safeSetItem(keys.CLIENTS, state.clients, storage);
+    if (!res.success) allSuccess = false;
+  }
+  if (Array.isArray(state.dailySales)) {
+    const res = safeSetItem(keys.SALES, state.dailySales, storage);
     if (!res.success) allSuccess = false;
   }
   if (state.lastSyncedAt) {
@@ -483,8 +509,10 @@ export async function syncShopData(shopSlug = DEFAULT_SHOP_SLUG, pin = '', optio
 
   if (remoteResult.success && remoteResult.data) {
     const remote = remoteResult.data;
+    const currentLocal = loadLocalShopState(shopSlug, storage);
     const { updatedAppointments } = cleanExpiredHolds(remote.appointments || []);
     const baseCfg = remote.config || getDefaultShopConfig(shopSlug);
+    const mergedSales = mergeSyncedSales(remote.dailySales, currentLocal.dailySales);
 
     const mergedSnapshot = {
       shopSlug,
@@ -492,6 +520,7 @@ export async function syncShopData(shopSlug = DEFAULT_SHOP_SLUG, pin = '', optio
       appointments: updatedAppointments,
       queue: remote.queue || [],
       clients: remote.clients || [],
+      dailySales: mergedSales,
       lastSyncedAt: new Date().toISOString()
     };
 
@@ -642,6 +671,12 @@ export async function dispatchBarberAction(
     const clientId = payload?.clientId || payload?.id;
     local.clients = local.clients.filter(c => String(c.id) !== String(clientId));
     localUpdated = true;
+  } else if (action === 'record_sale') {
+    const saleObj = payload?.sale || payload;
+    if (saleObj && saleObj.id) {
+      local.dailySales = mergeSyncedSales([saleObj], local.dailySales);
+      localUpdated = true;
+    }
   } else if (action === 'update_shop_schedule') {
     local.config = {
       ...(local.config || {}),
