@@ -426,9 +426,145 @@ export function resolveTenantSlug(location = null, storage = null) {
  * Constructs canonical customer portal booking URL
  */
 export function buildCustomerPortalUrl(origin, slug) {
-  const cleanOrigin = (origin || 'https://luminadesk-gary.netlify.app').replace(/\/+$/, '');
+  const defaultOrigin =
+    typeof window !== 'undefined' && /^https?:\/\//i.test(window.location?.origin || '')
+      ? window.location.origin
+      : 'https://luminadesk-gary.netlify.app';
+  const cleanOrigin = (origin || defaultOrigin).replace(/\/+$/, '');
   const cleanSlug = normalizeShopSlug(slug) || DEFAULT_SHOP_SLUG;
   return `${cleanOrigin}/r/${cleanSlug}`;
+}
+
+/**
+ * Generates an RFC 5545 .ics calendar file containing the appointment & direct rebooking URL
+ */
+export function buildAppointmentIcsContent({
+  title = 'Cita en Barbería',
+  description = '',
+  location = '',
+  date = '',
+  timeSlot = '10:00',
+  durationMinutes = 30,
+  bookingUrl = '',
+} = {}) {
+  const safeDate = String(date || '').replace(/[^0-9]/g, '');
+  const [hhRaw, mmRaw] = String(timeSlot || '10:00').split(':');
+  const startH = Math.max(0, Math.min(23, Number(hhRaw) || 10));
+  const startM = Math.max(0, Math.min(59, Number(mmRaw) || 0));
+  const dur = Math.max(15, Number(durationMinutes) || 30);
+
+  let y = 2026;
+  let mo = 1;
+  let d = 1;
+  if (safeDate.length === 8) {
+    y = Number(safeDate.slice(0, 4));
+    mo = Number(safeDate.slice(4, 6));
+    d = Number(safeDate.slice(6, 8));
+  } else {
+    const now = new Date();
+    y = now.getFullYear();
+    mo = now.getMonth() + 1;
+    d = now.getDate();
+  }
+
+  const startDt = new Date(Date.UTC(y, mo - 1, d, startH, startM, 0));
+  const endDt = new Date(startDt.getTime() + dur * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmtLocal = (dt) =>
+    `${dt.getUTCFullYear()}${pad(dt.getUTCMonth() + 1)}${pad(dt.getUTCDate())}T${pad(dt.getUTCHours())}${pad(dt.getUTCMinutes())}00`;
+  const stamp = fmtLocal(new Date()) + 'Z';
+  const esc = (s) =>
+    String(s || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,');
+
+  const fullDesc = bookingUrl
+    ? `${description ? `${description}\n` : ''}Volver a reservar directo: ${bookingUrl}`
+    : description;
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//KUTZ Barber OS//Reservas//ES',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${Date.now()}-${Math.random().toString(36).slice(2, 8)}@kutz-barber`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART:${fmtLocal(startDt)}`,
+    `DTEND:${fmtLocal(endDt)}`,
+    `SUMMARY:${esc(title)}`,
+    `DESCRIPTION:${esc(fullDesc)}`,
+    location ? `LOCATION:${esc(location)}` : null,
+    bookingUrl ? `URL:${bookingUrl}` : null,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean);
+
+  return lines.join('\r\n');
+}
+
+export function downloadAppointmentIcs(params = {}, filename = 'cita-barberia.ics') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+  const content = buildAppointmentIcsContent(params);
+  const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
+}
+
+export function getPublicClientProfileKey(slug) {
+  return `kutz_public_client_profile_${normalizeShopSlug(slug) || DEFAULT_SHOP_SLUG}`;
+}
+
+export function loadSavedPublicClientProfile(slug, storage = null) {
+  const s = storage || (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!s) return null;
+  try {
+    const raw = s.getItem(getPublicClientProfileKey(slug));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || (!parsed.clientName && !parsed.clientPhone)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function savePublicClientProfile(slug, profile, storage = null) {
+  const s = storage || (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!s || !profile) return;
+  try {
+    s.setItem(
+      getPublicClientProfileKey(slug),
+      JSON.stringify({
+        clientName: String(profile.clientName || '').trim(),
+        clientPhone: String(profile.clientPhone || '').trim(),
+        lastServiceId: profile.lastServiceId || '',
+        lastServiceName: profile.lastServiceName || '',
+        savedAt: new Date().toISOString(),
+      })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+export function clearPublicClientProfile(slug, storage = null) {
+  const s = storage || (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!s) return;
+  try {
+    s.removeItem(getPublicClientProfileKey(slug));
+  } catch {
+    // ignore
+  }
 }
 
 /**

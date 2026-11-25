@@ -37,6 +37,7 @@ import {
 } from '../lib/syncService';
 import {
   DEFAULT_SHOP_SLUG,
+  buildCustomerPortalUrl,
   buildWhatsAppUrl,
   getShopLocalDateTime,
   getShopVertical,
@@ -682,14 +683,18 @@ const Dashboard = () => {
     showToast(`⏳ ${walkInForm.name} apuntado a la cola`);
   };
 
-  // Mandar WhatsApp rápido (con prefijo 34 normalizado)
+  // Mandar WhatsApp rápido (con prefijo 34 normalizado y enlace directo de reserva)
   const handleDirectWhatsApp = (client, insight) => {
     soundFx.playClick();
     const firstName = (client.name || 'crack').split(' ')[0];
     const shopLabel = activeShop?.name || 'KUTZ Barber';
-    const draft =
+    const portalUrl = buildCustomerPortalUrl('', activeShopSlug);
+    const baseDraft =
       insight?.whatsappDraft ||
       `¡Qué pasa ${firstName}! 💈 Ya toca repasar ese degradado en ${shopLabel}. ¿Te guardamos sitio esta semana? 🔥`;
+    const draft = baseDraft.includes('/r/')
+      ? baseDraft
+      : `${baseDraft}\n\nReserva en 10 seg aquí sin esperar 👉 ${portalUrl}`;
     const cleanDigits = (client.phone || '').replace(/\D/g, '');
     if (cleanDigits.length >= 9) {
       window.open(
@@ -1232,7 +1237,8 @@ const Dashboard = () => {
       activeShop?.googleReviewUrl ||
       `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dynamicSearchQuery)}`;
     const firstName = String(entry.clientName || 'crack').split(' ')[0];
-    const msg = `¡Muchas gracias por tu visita hoy a *${shopTitle}*, ${firstName}! 💈✂️\nHa sido un placer atenderte con *${barberHandle}*.\nSi te ha gustado cómo quedó el corte, nos ayudarías muchísimo dejándonos una reseña de 5 estrellas en Google aquí 👇\n${reviewLink}\n¡Nos vemos en el próximo repaso! 🌟`;
+    const portalUrl = buildCustomerPortalUrl('', activeShopSlug);
+    const msg = `¡Muchas gracias por tu visita hoy a *${shopTitle}*, ${firstName}! 💈✂️\nHa sido un placer atenderte con *${barberHandle}*.\nSi te ha gustado cómo quedó el corte, nos ayudarías muchísimo dejándonos una reseña de 5 estrellas en Google aquí 👇\n${reviewLink}\n\nPara tu próximo repaso, reserva directo en 10 seg aquí 👉 ${portalUrl}\n¡Nos vemos pronto! 🌟`;
 
     if (typeof window !== 'undefined') {
       window.open(

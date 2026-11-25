@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { soundFx } from '../lib/soundFx';
 import { useClients, getFadeAlert } from '../context/ClientContext';
 import { useShop } from '../context/ShopContext';
-import { buildWhatsAppUrl, getShopVertical, isFemaleVertical } from '../lib/shopUtils';
+import { buildCustomerPortalUrl, buildWhatsAppUrl, getShopVertical, isFemaleVertical } from '../lib/shopUtils';
 
 /**
  * Tarjeta 3D Giratoria para Barbería, Uñas & Manicura y Peluquería & Estética (Bento Flip Card)
@@ -307,13 +307,14 @@ const ClientBentoCard = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       soundFx.playClick();
-                      const firstName = (client.name || 'guapa').split(' ')[0];
+                      const firstName = (client.name || 'crack').split(' ')[0];
+                      const portalUrl = buildCustomerPortalUrl('', activeShopSlug);
                       const draft =
                         activeVertical === 'nails'
-                          ? `¡Hola ${firstName}! 💅✨ Te escribimos de CM Salón D’ Campodónico. ¿Te reservamos cita esta semana para tus uñas o manicura?`
+                          ? `¡Hola ${firstName}! 💅✨ Te escribimos de CM Salón D’ Campodónico. ¿Te reservamos cita esta semana para tus uñas o manicura?\n\nReserva directa en 10 seg aquí 👉 ${portalUrl}`
                           : activeVertical === 'peluqueria'
-                          ? `¡Hola ${firstName}! 💇‍♀️✨ Te escribimos del salón. Ya tenemos lista tu fórmula en tu ficha, ¿te reservamos cita esta semana?`
-                          : `¡Qué pasa ${firstName}! 💈 Te escribimos de la barbería. ¿Te guardamos sillón esta semana para repasar el corte? 🔥`;
+                          ? `¡Hola ${firstName}! 💇‍♀️✨ Te escribimos del salón. Ya tenemos lista tu fórmula en tu ficha, ¿te reservamos cita esta semana?\n\nReserva directa en 10 seg aquí 👉 ${portalUrl}`
+                          : `¡Qué pasa ${firstName}! 💈 Te escribimos de la barbería. ¿Te guardamos sillón esta semana para repasar el corte? 🔥\n\nReserva en 10 seg aquí 👉 ${portalUrl}`;
                       window.open(
                         buildWhatsAppUrl(client.phone, draft),
                         '_blank',

@@ -22,6 +22,13 @@ import {
   getOutbox,
   flushOutbox,
 } from '../src/lib/syncService.js';
+import {
+  buildAppointmentIcsContent,
+  buildCustomerPortalUrl,
+  clearPublicClientProfile,
+  loadSavedPublicClientProfile,
+  savePublicClientProfile,
+} from '../src/lib/shopUtils.js';
 import { expect } from './helpers/testHarness.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -309,6 +316,47 @@ export function registerBlock1LegalSecurityTests(runner) {
       expect(dash.includes('No válido como ticket fiscal ni factura (VeriFactu)')).toBe(true);
       expect(legal.includes('DPA-Art28-')).toBe(true);
       expect(admin.includes('&pin=')).toBe(false);
+    });
+
+    runner.it('B1.7: Repeat Booking Without QR — ICS Calendar, Local Client Recall & WhatsApp Rebooking Links', () => {
+      const portalUrl = buildCustomerPortalUrl('https://luminadesk-gary.netlify.app', 'joseh-barber');
+      expect(portalUrl).toBe('https://luminadesk-gary.netlify.app/r/joseh-barber');
+
+      const ics = buildAppointmentIcsContent({
+        title: 'Corte + Barba · CM Salón D’ Campodónico',
+        description: 'Barbero: José',
+        location: 'Arrecife, Lanzarote',
+        date: '2026-12-15',
+        timeSlot: '16:00',
+        durationMinutes: 45,
+        bookingUrl: portalUrl,
+      });
+      expect(ics.includes('BEGIN:VCALENDAR')).toBe(true);
+      expect(ics.includes('DTSTART:20261215T160000')).toBe(true);
+      expect(ics.includes('DTEND:20261215T164500')).toBe(true);
+      expect(ics.includes(`URL:${portalUrl}`)).toBe(true);
+
+      const mem = new Map();
+      const mockStorage = {
+        getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+        setItem: (k, v) => mem.set(k, String(v)),
+        removeItem: (k) => mem.delete(k),
+      };
+      savePublicClientProfile('joseh-barber', { clientName: 'Carlos Pérez', clientPhone: '689014014' }, mockStorage);
+      const loaded = loadSavedPublicClientProfile('joseh-barber', mockStorage);
+      expect(loaded.clientName).toBe('Carlos Pérez');
+      expect(loaded.clientPhone).toBe('689014014');
+      clearPublicClientProfile('joseh-barber', mockStorage);
+      expect(loadSavedPublicClientProfile('joseh-barber', mockStorage)).toBe(null);
+
+      const pub = fs.readFileSync(path.join(rootDir, 'src/pages/PublicBookingView.jsx'), 'utf8');
+      const dash = fs.readFileSync(path.join(rootDir, 'src/pages/Dashboard.jsx'), 'utf8');
+      const bento = fs.readFileSync(path.join(rootDir, 'src/components/ClientBentoCard.jsx'), 'utf8');
+      expect(pub.includes('repeat-booking-kit')).toBe(true);
+      expect(pub.includes('download-ics-btn')).toBe(true);
+      expect(pub.includes('returning-client-banner')).toBe(true);
+      expect(dash.includes('buildCustomerPortalUrl')).toBe(true);
+      expect(bento.includes('buildCustomerPortalUrl')).toBe(true);
     });
   });
 }

@@ -16,12 +16,22 @@ import {
   Smartphone,
   ArrowRight,
   ShieldCheck,
+  CalendarPlus,
+  Bookmark,
+  Copy,
+  Check,
+  RotateCcw,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import {
+  buildCustomerPortalUrl,
   buildEmergencyPhoneLink,
   buildWhatsAppUrl,
+  clearPublicClientProfile,
+  downloadAppointmentIcs,
+  loadSavedPublicClientProfile,
   normalizeShopSlug,
+  savePublicClientProfile,
   getShopLocalDateTime,
   getShopVertical,
   isFemaleVertical,
@@ -337,8 +347,9 @@ export default function PublicBookingView() {
 
   const [selectedSlot, setSelectedSlot] = useState('11:00');
   const [selectedStyle, setSelectedStyle] = useState(STYLE_PILLS[0]);
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
+  const [savedProfile, setSavedProfile] = useState(() => loadSavedPublicClientProfile(activeShopSlug));
+  const [clientName, setClientName] = useState(() => savedProfile?.clientName || '');
+  const [clientPhone, setClientPhone] = useState(() => savedProfile?.clientPhone || '');
   const [notes, setNotes] = useState('');
   // RGPD 1st-Layer Consent — BOTH UNCHECKED BY DEFAULT
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
@@ -348,6 +359,56 @@ export default function PublicBookingView() {
   const [formError, setFormError] = useState('');
   const [confirmationTicket, setConfirmationTicket] = useState(null);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [copiedPortalLink, setCopiedPortalLink] = useState(false);
+  const [installPromptEvent, setInstallPromptEvent] = useState(null);
+
+  const portalUrl = useMemo(() => buildCustomerPortalUrl('', activeShopSlug), [activeShopSlug]);
+
+  useEffect(() => {
+    const profile = loadSavedPublicClientProfile(activeShopSlug);
+    setSavedProfile(profile);
+    if (profile?.clientName) setClientName(profile.clientName);
+    if (profile?.clientPhone) setClientPhone(profile.clientPhone);
+  }, [activeShopSlug]);
+
+  useEffect(() => {
+    const onBeforeInstall = (e) => {
+      e.preventDefault();
+      setInstallPromptEvent(e);
+    };
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+  }, []);
+
+  const handleResetSavedProfile = () => {
+    soundFx.playClick();
+    clearPublicClientProfile(activeShopSlug);
+    setSavedProfile(null);
+    setClientName('');
+    setClientPhone('');
+  };
+
+  const handleCopyPortalLink = async () => {
+    soundFx.playClick();
+    try {
+      await navigator.clipboard?.writeText(portalUrl);
+    } catch {
+      // ignore
+    }
+    setCopiedPortalLink(true);
+    setTimeout(() => setCopiedPortalLink(false), 2500);
+  };
+
+  const handleTriggerInstall = async () => {
+    if (!installPromptEvent) return;
+    soundFx.playClick();
+    try {
+      await installPromptEvent.prompt();
+      setInstallPromptEvent(null);
+    } catch {
+      // ignore
+    }
+  };
 
   // Estado público real del servidor (Cero acceso a BD privada local)
   const [serverAvailability, setServerAvailability] = useState(null);
@@ -653,6 +714,15 @@ export default function PublicBookingView() {
         }
       }
 
+      const nextSaved = {
+        clientName: newAppointment.clientName,
+        clientPhone: newAppointment.clientPhone,
+        lastServiceId: selectedService.id,
+        lastServiceName: selectedService.name,
+      };
+      savePublicClientProfile(activeShopSlug, nextSaved);
+      setSavedProfile(nextSaved);
+
       setSessionBookings((prev) => [...prev, newAppointment]);
       setConfirmationTicket({
         mode: 'appointment',
@@ -660,6 +730,7 @@ export default function PublicBookingView() {
         clientName: newAppointment.clientName,
         clientPhone: newAppointment.clientPhone,
         serviceName: selectedService.name,
+        durationMinutes: Number(selectedService.durationMinutes) || 30,
         price: selectedService.priceLabel || `${selectedService.price}€`,
         barberName: effectiveBarberName,
         date: selectedDate,
@@ -768,6 +839,15 @@ export default function PublicBookingView() {
           if (resData?.waitMinutes) waitMinutes = resData.waitMinutes;
         }
       }
+
+      const nextSavedWalkIn = {
+        clientName: newWalkIn.name,
+        clientPhone: newWalkIn.phone,
+        lastServiceId: selectedService.id,
+        lastServiceName: selectedService.name,
+      };
+      savePublicClientProfile(activeShopSlug, nextSavedWalkIn);
+      setSavedProfile(nextSavedWalkIn);
 
       setPublicQueueCount(nextPosition);
       setConfirmationTicket({
@@ -1098,13 +1178,90 @@ export default function PublicBookingView() {
                 </>
               )}
 
+              {/* Kit "No Pierdas Tu Acceso" para repetir cita sin escanear QR */}
+              <div
+                data-testid="repeat-booking-kit"
+                className="p-4 rounded-xl bg-[#0A0C0F] border border-[#252A36] text-left space-y-2.5"
+              >
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#34D399] flex items-center gap-1.5">
+                  <Bookmark size={13} />
+                  <span>Guarda tu cita y tu enlace para repetir sin QR</span>
+                </p>
+
+                <div className="grid grid-cols-1 gap-2">
+                  {confirmationTicket.mode === 'appointment' && (
+                    <button
+                      type="button"
+                      data-testid="download-ics-btn"
+                      onClick={() => {
+                        soundFx.playClick();
+                        downloadAppointmentIcs(
+                          {
+                            title: `${confirmationTicket.serviceName} · ${shopName}`,
+                            description: `Barbero: ${confirmationTicket.barberName}`,
+                            location: shopAddress,
+                            date: confirmationTicket.date,
+                            timeSlot: confirmationTicket.timeSlot,
+                            durationMinutes: confirmationTicket.durationMinutes || 30,
+                            bookingUrl: portalUrl,
+                          },
+                          `cita-${activeShopSlug}-${confirmationTicket.date}.ics`
+                        );
+                      }}
+                      className="w-full py-2.5 px-3 min-h-[42px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 text-xs font-bold text-white flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    >
+                      <CalendarPlus size={15} className="text-[#34D399]" />
+                      <span>Guardar en mi Calendario (.ics)</span>
+                    </button>
+                  )}
+
+                  <a
+                    data-testid="save-link-wa-btn"
+                    href={buildWhatsAppUrl(
+                      '',
+                      `💈 Mi enlace directo para reservar cita en ${shopName} sin QR:\n${portalUrl}`
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 px-3 min-h-[42px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#10B981]/40 text-xs font-bold text-[#34D399] flex items-center justify-center gap-2 transition-all"
+                  >
+                    <MessageSquare size={15} />
+                    <span>Guardarme enlace en mi WhatsApp</span>
+                  </a>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyPortalLink}
+                      className="flex-1 py-2 px-3 min-h-[38px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] text-[11px] font-bold text-[#D1D5DB] flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedPortalLink ? <Check size={13} className="text-[#34D399]" /> : <Copy size={13} />}
+                      <span>{copiedPortalLink ? '¡Enlace copiado!' : 'Copiar enlace directo'}</span>
+                    </button>
+
+                    {installPromptEvent && (
+                      <button
+                        type="button"
+                        onClick={handleTriggerInstall}
+                        className="flex-1 py-2 px-3 min-h-[38px] rounded-xl bg-[#10B981] text-[#07090C] text-[11px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Smartphone size={13} />
+                        <span>Instalar en mi móvil</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-[#9CA3AF] leading-snug">
+                  💡 <strong className="text-white">Truco:</strong> En tu móvil toca <em>Compartir → Añadir a pantalla de inicio</em> para tener el icono de {shopName} siempre listo.
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={() => {
                   soundFx.playClick();
                   setConfirmationTicket(null);
-                  setClientName('');
-                  setClientPhone('');
                   setAcceptedPrivacy(false);
                   setAcceptedWhatsapp(false);
                 }}
@@ -1115,6 +1272,29 @@ export default function PublicBookingView() {
             </div>
           ) : (
             <>
+              {savedProfile?.clientName && (
+                <div
+                  data-testid="returning-client-banner"
+                  className="mt-4 p-3.5 rounded-xl bg-[#10B981]/12 border border-[#10B981]/40 flex flex-wrap items-center justify-between gap-2 text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white">
+                      ✨ ¡Hola de nuevo, {savedProfile.clientName.split(' ')[0]}!
+                    </p>
+                    <p className="text-[11px] text-[#D1D5DB]">
+                      Tus datos están listos para reservar en 5 segundos.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetSavedProfile}
+                    className="px-2.5 py-1.5 rounded-lg bg-[#141820] border border-[#252A36] text-[11px] font-bold text-[#D1D5DB] hover:text-white inline-flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <RotateCcw size={11} />
+                    <span>Cambiar datos</span>
+                  </button>
+                </div>
+              )}
               {/* Mode Selector Tabs (min-h-44px for ergonomic thumb tapping) */}
               <div className="grid grid-cols-2 gap-2 my-5 p-1 rounded-xl bg-[#141820] border border-[#252A36]">
                 <button
