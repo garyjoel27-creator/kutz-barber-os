@@ -7,32 +7,57 @@ import { RotateCcw, Check, PenTool } from 'lucide-react';
  */
 const SignaturePad = ({ onSave, onClear, existingSignature = null }) => {
   const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasDrawn, setHasDrawn] = useState(false);
+  const drawingRef = useRef(false);
+  const initializedRef = useRef(false);
+  const lastEmittedRef = useRef(null);
+  const sizeRef = useRef({ width: 460, height: 160 });
+  const [hasDrawn, setHasDrawn] = useState(Boolean(existingSignature));
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    // Ajustar resolución retina para que la firma sea nítida
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
-    ctx.scale(2, 2);
+    // Never wipe/reload canvas when parent echoes back our own captured stroke
+    if (existingSignature && existingSignature === lastEmittedRef.current && initializedRef.current) {
+      return;
+    }
 
-    ctx.strokeStyle = '#201d1a'; // Tinta espresso de lujo
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    const ctx = canvas.getContext('2d');
+    if (!initializedRef.current) {
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(280, Math.round(rect.width || 460));
+      const height = Math.max(140, Math.round(rect.height || 160));
+      const dpr = Math.min(window.devicePixelRatio || 2, 2);
+      sizeRef.current = { width, height };
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.strokeStyle = '#201d1a';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      initializedRef.current = true;
+    }
+
+    const { width, height } = sizeRef.current;
 
     if (existingSignature) {
+      let cancelled = false;
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        if (cancelled || drawingRef.current) return;
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
         setHasDrawn(true);
       };
       img.src = existingSignature;
+      return () => {
+        cancelled = true;
+      };
+    } else if (lastEmittedRef.current === null || !drawingRef.current) {
+      ctx.clearRect(0, 0, width, height);
+      lastEmittedRef.current = null;
+      setHasDrawn(false);
     }
   }, [existingSignature]);
 
@@ -40,45 +65,53 @@ const SignaturePad = ({ onSave, onClear, existingSignature = null }) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-
-    if (e.touches && e.touches[0]) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
-      };
-    }
+    const scaleX = rect.width ? sizeRef.current.width / rect.width : 1;
+    const scaleY = rect.height ? sizeRef.current.height / rect.height : 1;
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
     };
   };
 
   const startDrawing = (e) => {
     e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try {
+      canvas.setPointerCapture?.(e.pointerId);
+    } catch {
+      // ignore
+    }
     const { x, y } = getCoordinates(e);
-    const ctx = canvasRef.current.getContext('2d');
+    const ctx = canvas.getContext('2d');
     ctx.beginPath();
     ctx.moveTo(x, y);
-    setIsDrawing(true);
+    ctx.lineTo(x + 0.1, y + 0.1);
+    ctx.stroke();
+    drawingRef.current = true;
     setHasDrawn(true);
   };
 
   const draw = (e) => {
-    if (!isDrawing) return;
+    if (!drawingRef.current) return;
     e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const { x, y } = getCoordinates(e);
-    const ctx = canvasRef.current.getContext('2d');
+    const ctx = canvas.getContext('2d');
     ctx.lineTo(x, y);
     ctx.stroke();
   };
 
   const stopDrawing = (e) => {
-    if (isDrawing) {
+    if (drawingRef.current) {
       e.preventDefault();
-      setIsDrawing(false);
+      drawingRef.current = false;
       const canvas = canvasRef.current;
       if (canvas && onSave) {
-        onSave(canvas.toDataURL('image/png'));
+        const dataUrl = canvas.toDataURL('image/png');
+        lastEmittedRef.current = dataUrl;
+        onSave(dataUrl);
       }
     }
   };
@@ -87,8 +120,9 @@ const SignaturePad = ({ onSave, onClear, existingSignature = null }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    ctx.clearRect(0, 0, rect.width, rect.height);
+    ctx.clearRect(0, 0, sizeRef.current.width, sizeRef.current.height);
+    drawingRef.current = false;
+    lastEmittedRef.current = null;
     setHasDrawn(false);
     if (onClear) onClear();
   };
@@ -96,7 +130,9 @@ const SignaturePad = ({ onSave, onClear, existingSignature = null }) => {
   const exportSignature = () => {
     const canvas = canvasRef.current;
     if (!canvas || !hasDrawn) return null;
-    return canvas.toDataURL('image/png');
+    const dataUrl = canvas.toDataURL('image/png');
+    lastEmittedRef.current = dataUrl;
+    return dataUrl;
   };
 
   return (
@@ -104,14 +140,12 @@ const SignaturePad = ({ onSave, onClear, existingSignature = null }) => {
       <div className="relative border-2 border-dashed border-[#ede5dc] rounded-2xl bg-[#faf8f5]/80 overflow-hidden touch-none hover:border-[#bfa181] transition-colors">
         <canvas
           ref={canvasRef}
-          className="w-full h-40 cursor-crosshair block"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
+          className="w-full h-40 cursor-crosshair block touch-none"
+          onPointerDown={startDrawing}
+          onPointerMove={draw}
+          onPointerUp={stopDrawing}
+          onPointerLeave={stopDrawing}
+          onPointerCancel={stopDrawing}
         />
 
         {!hasDrawn && (

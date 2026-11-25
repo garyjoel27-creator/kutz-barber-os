@@ -12,8 +12,16 @@ import syncHandler from '../netlify/functions/sync.js';
 import {
   resetMemoryStore,
   getAuditLog,
+  hashClientIp,
+  setRateLimitState,
 } from '../netlify/functions/lib/blobsClient.js';
-import { mergeSyncedSales } from '../src/lib/syncService.js';
+import {
+  mergeSyncedSales,
+  SyncEngine,
+  addToOutbox,
+  getOutbox,
+  flushOutbox,
+} from '../src/lib/syncService.js';
 import { expect } from './helpers/testHarness.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -142,6 +150,68 @@ export function registerBlock1LegalSecurityTests(runner) {
         { params: { shopSlug: 'kutz-madrid' } }
       );
       expect(stillBlocked.status).toBe(429);
+
+      // Regression: once 15-min lockout expires (blockedUntil <= now), 1 wrong PIN must return 401 with 4 remaining attempts (NOT immediate 429 re-lockout!)
+      const expiredIpReq = new Request('http://localhost/api/shops/kutz-madrid/sync', {
+        headers: { 'x-shop-pin': '0000', 'x-forwarded-for': '203.0.113.77' },
+      });
+      const ipHash = hashClientIp(expiredIpReq);
+      await setRateLimitState('kutz-madrid', ipHash, {
+        attempts: 5,
+        blockedUntil: Date.now() - 1000,
+        updatedAt: Date.now() - 901000,
+      });
+      const postExpiryWrong = await syncHandler(expiredIpReq, { params: { shopSlug: 'kutz-madrid' } });
+      expect(postExpiryWrong.status).toBe(401);
+      const postExpiryBody = await postExpiryWrong.json();
+      expect(postExpiryBody.remainingAttempts).toBe(4);
+    });
+
+    runner.it('B1.3b: SyncEngine pauses on missing/401/429 PIN and flushOutbox preserves items on 401/429 without self-lockout', async () => {
+      const storeMap = new Map();
+      const storage = {
+        getItem: (k) => (storeMap.has(k) ? storeMap.get(k) : null),
+        setItem: (k, v) => storeMap.set(k, String(v)),
+        removeItem: (k) => storeMap.delete(k),
+      };
+
+      // 1. Empty PIN must emit auth=true without calling fetch
+      let fetchCalls = 0;
+      const engineNoPin = new SyncEngine({
+        shopSlug: 'kutz-madrid',
+        pin: '',
+        storage,
+        fetch: async () => {
+          fetchCalls++;
+          return { ok: false, status: 401 };
+        },
+      });
+      let authEmitted = false;
+      engineNoPin.on('auth', (v) => { authEmitted = v; });
+      await engineNoPin.forceSync();
+      expect(fetchCalls).toBe(0);
+      expect(authEmitted).toBe(true);
+      expect(engineNoPin.authPaused).toBe(true);
+      engineNoPin.destroy();
+
+      // 2. flushOutbox halts immediately on 429 without incrementing retryCount or dropping items
+      addToOutbox('kutz-madrid', 'record_sale', { id: 's1' }, storage);
+      addToOutbox('kutz-madrid', 'record_sale', { id: 's2' }, storage);
+      let flushCalls = 0;
+      const flushRes = await flushOutbox(
+        'kutz-madrid',
+        '1234',
+        async () => {
+          flushCalls++;
+          return { ok: false, status: 429 };
+        },
+        storage
+      );
+      expect(flushCalls).toBe(1);
+      expect(flushRes.remaining).toBe(2);
+      const outbox = getOutbox('kutz-madrid', storage);
+      expect(outbox.length).toBe(2);
+      expect(outbox[0].retryCount).toBe(0);
     });
 
     runner.it('B1.4: RGPD Audit Log captures sensitive mutations and pin_lockout without plaintext PINs', async () => {
@@ -221,6 +291,7 @@ export function registerBlock1LegalSecurityTests(runner) {
       const dash = fs.readFileSync(path.join(rootDir, 'src/pages/Dashboard.jsx'), 'utf8');
       const legal = fs.readFileSync(path.join(rootDir, 'src/components/LegalComplianceModal.jsx'), 'utf8');
       const admin = fs.readFileSync(path.join(rootDir, 'src/components/SuperAdminManager.jsx'), 'utf8');
+      const sigPad = fs.readFileSync(path.join(rootDir, 'src/components/SignaturePad.jsx'), 'utf8');
 
       expect(pub.includes('Art. 13 RGPD')).toBe(true);
       expect(pub.includes('useState(false)')).toBe(true);
@@ -229,6 +300,8 @@ export function registerBlock1LegalSecurityTests(runner) {
       expect(rgpd.includes('photosPrivate: false')).toBe(true);
       expect(rgpd.includes('photosMarketing: false')).toBe(true);
       expect(rgpd.includes('communications: false')).toBe(true);
+      expect(rgpd.includes('onClear={')).toBe(true);
+      expect(sigPad.includes('lastEmittedRef')).toBe(true);
       expect(profile.includes('Privacidad &amp; Derechos ARSOPOL')).toBe(true);
       expect(profile.includes('-datos-rgpd.json')).toBe(true);
       expect(profile.includes('Revocar permisos opcionales')).toBe(true);

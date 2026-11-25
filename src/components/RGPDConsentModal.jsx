@@ -68,14 +68,14 @@ const RGPDConsentModal = ({
   };
 
   const handleSave = () => {
-    // Validación estricta: No se puede prestar servicio sin consentimiento asistencial
+    // Validación estricta: No se puede prestar servicio sin consentimiento básico
     if (!permissions.treatment) {
-      setErrorMessage('Es obligatorio autorizar la finalidad asistencial para abrir el expediente clínico.');
+      setErrorMessage('Es obligatorio autorizar la apertura de ficha técnica y registro de alergias para continuar.');
       return;
     }
 
     if (!signatureData) {
-      setErrorMessage('Es obligatoria la firma manuscrita digitalizada del paciente para formalizar el consentimiento.');
+      setErrorMessage('Es obligatoria la firma manuscrita digitalizada del cliente para formalizar el consentimiento.');
       return;
     }
 
@@ -254,7 +254,7 @@ const RGPDConsentModal = ({
                   </div>
                 </label>
 
-                {/* Capa 2: Fotos Clínicas Internas (Obligatorio para seguimiento) */}
+                {/* Capa 2: Fotos Internas Antes/Después (Opcional) */}
                 <label className={`flex items-start space-x-3.5 p-3.5 rounded-2xl border transition-all cursor-pointer ${
                   permissions.photosPrivate ? 'bg-[#537559]/5 border-[#537559]/40' : 'bg-white border-[#ede7e0]'
                 }`}>
@@ -267,10 +267,10 @@ const RGPDConsentModal = ({
                   <div className="flex-1 text-xs">
                     <div className="flex items-center space-x-1.5 font-medium text-[#201d1a]">
                       <Camera size={14} className="text-[#7a5d42]" />
-                      <span>2. Fotografías Clínicas de Control Interno</span>
+                      <span>2. Fotografías Internas Antes/Después (Opcional)</span>
                     </div>
                     <p className="text-[11px] text-[#8f857d] mt-0.5 leading-snug">
-                      Consiento la captura de imágenes Antes/Después para constancia confidencial en mi ficha y evaluación comparativa.
+                      Consiento la captura de imágenes Antes/Después para constancia confidencial en mi ficha y seguimiento de estilo.
                     </p>
                   </div>
                 </label>
@@ -322,7 +322,7 @@ const RGPDConsentModal = ({
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-serif text-[#201d1a] font-medium tracking-wide">
-                    Firma Manuscrita Digitalizada del Paciente
+                    Firma Manuscrita Digitalizada del {activeModeConfig?.clientSingular || 'Cliente'}
                   </span>
                   <span className="text-[10px] text-[#8f857d]">
                     {client.consent?.signed ? `Firmado el: ${client.consent.formattedDate}` : `Fecha: ${new Date().toLocaleDateString('es-ES')}`}
@@ -332,6 +332,10 @@ const RGPDConsentModal = ({
                 <SignaturePad 
                   onSave={(dataUrl) => {
                     setSignatureData(dataUrl);
+                    setErrorMessage('');
+                  }}
+                  onClear={() => {
+                    setSignatureData(null);
                     setErrorMessage('');
                   }}
                   existingSignature={signatureData}
@@ -429,13 +433,13 @@ const RGPDConsentModal = ({
                   </div>
                   <div className="p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span>• Asistencia Clínica y Apertura de Historia Médica:</span>
+                      <span>• Ficha Técnica, Alergias y Servicio (Art. 9.2.a RGPD):</span>
                       <strong className={permissions.treatment ? 'text-[#537559]' : 'text-[#96423b]'}>
                         {permissions.treatment ? '[X] CONCEDIDO' : '[ ] DENEGADO'}
                       </strong>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>• Captura de Fotografías para Control Interno en Cabina:</span>
+                      <span>• Captura de Fotografías para Control Interno:</span>
                       <strong className={permissions.photosPrivate ? 'text-[#537559]' : 'text-[#96423b]'}>
                         {permissions.photosPrivate ? '[X] CONCEDIDO' : '[ ] DENEGADO'}
                       </strong>
@@ -452,6 +456,11 @@ const RGPDConsentModal = ({
                         {permissions.communications ? '[X] CONCEDIDO' : '[ ] NO CONCEDIDO'}
                       </strong>
                     </div>
+                    {client.consent?.revokedAt && (
+                      <p className="text-[10px] text-[#96423b] pt-1 border-t border-[#ede7e0]">
+                        Permisos opcionales revocados el: {new Date(client.consent.revokedAt).toLocaleString('es-ES')}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -467,7 +476,7 @@ const RGPDConsentModal = ({
 
                   <div className="text-right flex flex-col items-end">
                     <div className="text-[10px] text-[#7a5d42] font-semibold mb-1">
-                      Firma del Paciente:
+                      Firma del {activeModeConfig?.clientSingular || 'Cliente'}:
                     </div>
                     {signatureData ? (
                       <div className="border border-[#ede7e0] bg-[#faf8f5] rounded-xl p-2 w-48 h-20 flex items-center justify-center">

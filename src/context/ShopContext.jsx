@@ -126,6 +126,30 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const [needsPinSync, setNeedsPinSync] = useState(false);
 
+  // Strip legacy ?pin= parameter from URL cleanly inside an effect (never side-effect in useMemo)
+  useEffect(() => {
+    if (isPublicRoute || typeof window === 'undefined') return;
+    try {
+      const search = window.location.search || routerLocation?.search || '';
+      if (!search) return;
+      const params = new URLSearchParams(search);
+      const urlPin = params.get('pin');
+      if (urlPin !== null) {
+        if (/^\d{4}$/.test(urlPin)) {
+          storage.setItem(`kutz_${activeShopSlug}_verified_pin`, urlPin);
+        }
+        if (window.history?.replaceState) {
+          params.delete('pin');
+          const cleanQuery = params.toString();
+          const cleanUrl = `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash || ''}`;
+          window.history.replaceState({}, '', cleanUrl);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [isPublicRoute, activeShopSlug, routerLocation?.search, storage]);
+
   // Resolve persisted verified PIN for current tenant (never on public customer booking routes)
   const resolvedPin = useMemo(() => {
     if (isPublicRoute) return '';
@@ -134,17 +158,8 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
       if (search) {
         const params = new URLSearchParams(search);
         const urlPin = params.get('pin');
-        if (urlPin !== null) {
-          if (typeof window !== 'undefined' && window.history?.replaceState) {
-            params.delete('pin');
-            const cleanQuery = params.toString();
-            const cleanUrl = `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash || ''}`;
-            window.history.replaceState({}, '', cleanUrl);
-          }
-          if (/^\d{4}$/.test(urlPin)) {
-            storage.setItem(`kutz_${activeShopSlug}_verified_pin`, urlPin);
-            return urlPin;
-          }
+        if (urlPin && /^\d{4}$/.test(urlPin)) {
+          return urlPin;
         }
       }
       const savedPin = storage.getItem(`kutz_${activeShopSlug}_verified_pin`);
@@ -510,6 +525,9 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
           if (Array.isArray(data.clients)) {
             storage.setItem(`kutz_${activeShopSlug}_clients`, JSON.stringify(data.clients));
           }
+          if (Array.isArray(data.dailySales)) {
+            storage.setItem(`kutz_${activeShopSlug}_daily_sales_v2`, JSON.stringify(data.dailySales));
+          }
         } catch {
           // ignore
         }
@@ -518,6 +536,7 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
       setNeedsPinSync(false);
       if (syncEngineRef.current) {
         syncEngineRef.current.pin = cleanPin;
+        syncEngineRef.current.authPaused = false;
         syncEngineRef.current.forceSync();
       }
       setLastSyncTime(Date.now());

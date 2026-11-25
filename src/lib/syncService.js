@@ -419,6 +419,14 @@ export async function flushOutbox(shopSlug = DEFAULT_SHOP_SLUG, pin = '', custom
 
       if (response.ok) {
         processed++;
+      } else if (response.status === 401 || response.status === 403 || response.status === 429) {
+        // Auth or rate-limit block: halt immediately without dropping offline actions or triggering brute-force lockout
+        remaining.push(item);
+        for (let j = i + 1; j < outbox.length; j++) {
+          remaining.push(outbox[j]);
+        }
+        errors.push(`HTTP ${response.status} for action ${item.action}`);
+        break;
       } else if (response.status >= 400 && response.status < 500) {
         // Validation / client error: drop after 5 retries to avoid poison pill
         item.retryCount = (item.retryCount || 0) + 1;
@@ -480,7 +488,8 @@ export async function fetchRemoteShopState(shopSlug = DEFAULT_SHOP_SLUG, pin = '
       return {
         success: false,
         status: response.status,
-        authRequired: response.status === 401,
+        authRequired: response.status === 401 || response.status === 403,
+        rateLimited: response.status === 429,
         error: `HTTP ${response.status}`
       };
     }
@@ -498,6 +507,18 @@ export async function fetchRemoteShopState(shopSlug = DEFAULT_SHOP_SLUG, pin = '
  */
 export async function syncShopData(shopSlug = DEFAULT_SHOP_SLUG, pin = '', options = {}) {
   const storage = getEffectiveStorage(options.storage);
+
+  // Never hammer /sync with an empty PIN (prevents accidental 429 self-lockout on clean URLs)
+  if (!pin) {
+    const localSnapshot = loadLocalShopState(shopSlug, storage);
+    return {
+      data: localSnapshot,
+      source: 'local',
+      authRequired: true,
+      rateLimited: false,
+      syncStatus: SYNC_STATUS.IDLE
+    };
+  }
 
   // 1. Flush any pending actions if online
   if (isNavigatorOnline()) {
@@ -540,6 +561,7 @@ export async function syncShopData(shopSlug = DEFAULT_SHOP_SLUG, pin = '', optio
     data: localSnapshot,
     source: 'local',
     authRequired: Boolean(remoteResult.authRequired),
+    rateLimited: Boolean(remoteResult.rateLimited),
     syncStatus: remoteResult.isOffline ? SYNC_STATUS.OFFLINE : SYNC_STATUS.ERROR
   };
 }
@@ -750,6 +772,7 @@ export class SyncEngine {
     this.customStorage = options.storage || null;
     this.timerId = null;
     this.status = SYNC_STATUS.IDLE;
+    this.authPaused = false;
     this.listeners = {
       data: new Set(),
       status: new Set(),
@@ -778,8 +801,9 @@ export class SyncEngine {
       }
     }
 
-    // Schedule 5-second interval
+    // Schedule 5-second interval (paused while awaiting PIN unlock or rate-limit cooldown)
     this.timerId = setInterval(() => {
+      if (this.authPaused) return;
       if (isBrowser && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         return;
       }
@@ -807,6 +831,7 @@ export class SyncEngine {
     const cleanSlug = normalizeShopSlug(newSlug);
     if (!cleanSlug || cleanSlug === this.shopSlug) return;
     this.shopSlug = cleanSlug;
+    this.authPaused = false;
     if (newPin !== null && newPin !== undefined) {
       this.pin = String(newPin);
     }
@@ -816,6 +841,13 @@ export class SyncEngine {
   }
 
   async forceSync() {
+    if (!this.pin) {
+      this.authPaused = true;
+      const local = loadLocalShopState(this.shopSlug, this.customStorage);
+      this._emit('auth', true);
+      this._emit('data', local);
+      return { data: local, source: 'local', authRequired: true, syncStatus: SYNC_STATUS.IDLE };
+    }
     this._setStatus(SYNC_STATUS.SYNCING);
     try {
       const result = await syncShopData(this.shopSlug, this.pin, {
@@ -823,7 +855,9 @@ export class SyncEngine {
         storage: this.customStorage
       });
       this._setStatus(result.syncStatus);
-      this._emit('auth', Boolean(result.authRequired));
+      const mustPauseAuth = Boolean(result.authRequired || result.rateLimited);
+      this.authPaused = mustPauseAuth;
+      this._emit('auth', mustPauseAuth);
       this._emit('data', result.data);
       this._emit('outbox', getOutbox(this.shopSlug, this.customStorage));
       return result;
@@ -892,7 +926,9 @@ export class SyncEngine {
   }
 
   _onOnline() {
-    this.forceSync();
+    if (!this.authPaused) {
+      this.forceSync();
+    }
   }
 
   _onOffline() {
@@ -900,7 +936,7 @@ export class SyncEngine {
   }
 
   _onVisibilityChange() {
-    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+    if (!this.authPaused && typeof document !== 'undefined' && document.visibilityState === 'visible') {
       this.forceSync();
     }
   }
