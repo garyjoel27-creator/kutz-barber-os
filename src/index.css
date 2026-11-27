@@ -30,6 +30,12 @@
 }
 
 @layer base {
+  html,
+  body {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
   body {
     background-color: var(--color-canvas);
     background-image: 
@@ -40,6 +46,24 @@
     color: var(--color-espresso);
     font-family: var(--font-sans);
     letter-spacing: -0.01em;
+  }
+
+  /* Evitar auto-zoom en iOS Safari y asegurar lectura cómoda en formularios */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Suelo mínimo de legibilidad: elimina micro-letras ilegibles en móvil */
+  .text-\[9px\],
+  .text-\[10px\] {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+  .text-\[11px\] {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
   }
 
   h1, h2, h3, .font-editorial, .font-serif {

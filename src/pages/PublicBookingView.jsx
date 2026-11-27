@@ -21,6 +21,8 @@ import {
   Copy,
   Check,
   RotateCcw,
+  UserPlus,
+  ArrowLeft,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import {
@@ -29,6 +31,7 @@ import {
   buildWhatsAppUrl,
   clearPublicClientProfile,
   downloadAppointmentIcs,
+  downloadSalonVCard,
   loadSavedPublicClientProfile,
   normalizeShopSlug,
   savePublicClientProfile,
@@ -361,8 +364,13 @@ export default function PublicBookingView() {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [copiedPortalLink, setCopiedPortalLink] = useState(false);
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1); // 1: Servicio, 2: Día y Hora, 3: Confirmar
 
   const portalUrl = useMemo(() => buildCustomerPortalUrl('', activeShopSlug), [activeShopSlug]);
+  const isInAppBrowser = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    return /Instagram|FBAN|FBAV|WhatsApp|Line\//i.test(navigator.userAgent || '');
+  }, []);
 
   useEffect(() => {
     const profile = loadSavedPublicClientProfile(activeShopSlug);
@@ -1189,6 +1197,28 @@ export default function PublicBookingView() {
                 </p>
 
                 <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    data-testid="download-vcard-btn"
+                    onClick={() => {
+                      soundFx.playClick();
+                      downloadSalonVCard(
+                        {
+                          name: shopName,
+                          phone: shopPhone,
+                          address: shopAddress,
+                          bookingUrl: portalUrl,
+                          instagram: effectiveShop?.instagramBarber || effectiveShop?.instagramSalon || '',
+                        },
+                        `contacto-${activeShopSlug}.vcf`
+                      );
+                    }}
+                    className="w-full py-3 px-4 min-h-[46px] rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-sm font-black flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md"
+                  >
+                    <UserPlus size={17} />
+                    <span>Guardar {shopName.split('·')[0].trim()} en mis Contactos</span>
+                  </button>
+
                   {confirmationTicket.mode === 'appointment' && (
                     <button
                       type="button"
@@ -1208,9 +1238,9 @@ export default function PublicBookingView() {
                           `cita-${activeShopSlug}-${confirmationTicket.date}.ics`
                         );
                       }}
-                      className="w-full py-2.5 px-3 min-h-[42px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 text-xs font-bold text-white flex items-center justify-center gap-2 cursor-pointer transition-all"
+                      className="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 text-sm font-bold text-white flex items-center justify-center gap-2 cursor-pointer transition-all"
                     >
-                      <CalendarPlus size={15} className="text-[#34D399]" />
+                      <CalendarPlus size={16} className="text-[#34D399]" />
                       <span>Guardar en mi Calendario (.ics)</span>
                     </button>
                   )}
@@ -1223,9 +1253,9 @@ export default function PublicBookingView() {
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 px-3 min-h-[42px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#10B981]/40 text-xs font-bold text-[#34D399] flex items-center justify-center gap-2 transition-all"
+                    className="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#10B981]/40 text-sm font-bold text-[#34D399] flex items-center justify-center gap-2 transition-all"
                   >
-                    <MessageSquare size={15} />
+                    <MessageSquare size={16} />
                     <span>Guardarme enlace en mi WhatsApp</span>
                   </a>
 
@@ -1233,9 +1263,9 @@ export default function PublicBookingView() {
                     <button
                       type="button"
                       onClick={handleCopyPortalLink}
-                      className="flex-1 py-2 px-3 min-h-[38px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] text-[11px] font-bold text-[#D1D5DB] flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 py-2.5 px-3 min-h-[42px] rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] text-xs font-bold text-[#D1D5DB] flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      {copiedPortalLink ? <Check size={13} className="text-[#34D399]" /> : <Copy size={13} />}
+                      {copiedPortalLink ? <Check size={14} className="text-[#34D399]" /> : <Copy size={14} />}
                       <span>{copiedPortalLink ? '¡Enlace copiado!' : 'Copiar enlace directo'}</span>
                     </button>
 
@@ -1243,17 +1273,25 @@ export default function PublicBookingView() {
                       <button
                         type="button"
                         onClick={handleTriggerInstall}
-                        className="flex-1 py-2 px-3 min-h-[38px] rounded-xl bg-[#10B981] text-[#07090C] text-[11px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 py-2.5 px-3 min-h-[42px] rounded-xl bg-[#10B981] text-[#07090C] text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <Smartphone size={13} />
+                        <Smartphone size={14} />
                         <span>Instalar en mi móvil</span>
                       </button>
                     )}
                   </div>
                 </div>
 
-                <p className="text-[11px] text-[#9CA3AF] leading-snug">
-                  💡 <strong className="text-white">Truco:</strong> En tu móvil toca <em>Compartir → Añadir a pantalla de inicio</em> para tener el icono de {shopName} siempre listo.
+                <p className="text-xs text-[#D1D5DB] leading-relaxed">
+                  {isInAppBrowser ? (
+                    <>
+                      💡 <strong className="text-white">Abierto desde Instagram/WhatsApp:</strong> Para guardar el icono en tu móvil toca los 3 puntos <em>(⋯) → Abrir en Safari / Chrome</em>, o guarda nuestro contacto arriba.
+                    </>
+                  ) : (
+                    <>
+                      💡 <strong className="text-white">Truco:</strong> Al guardarnos en tus Contactos tendrás nuestro teléfono y este enlace de citas siempre a mano en tu agenda.
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -1262,10 +1300,11 @@ export default function PublicBookingView() {
                 onClick={() => {
                   soundFx.playClick();
                   setConfirmationTicket(null);
+                  setCurrentStep(1);
                   setAcceptedPrivacy(false);
                   setAcceptedWhatsapp(false);
                 }}
-                className="w-full py-3 px-4 min-h-[44px] rounded-xl bg-[#1B202B] hover:bg-[#252A36] text-xs font-bold text-[#D1D5DB] cursor-pointer"
+                className="w-full py-3 px-4 min-h-[46px] rounded-xl bg-[#1B202B] hover:bg-[#252A36] text-sm font-bold text-[#D1D5DB] cursor-pointer"
               >
                 Hacer otra reserva
               </button>
@@ -1338,11 +1377,47 @@ export default function PublicBookingView() {
               )}
 
               {/* ============================================================= */}
-              {/* MODO 1: RESERVAR DÍA Y HORA                                   */}
+              {/* MODO 1: ASISTENTE GUIADO EN 3 PASOS (SERVICIO -> HORA -> OK)  */}
               {/* ============================================================= */}
               {bookingMode === 'appointment' ? (
                 <form onSubmit={handleAppointmentSubmit} className="space-y-4">
-                  {/* 1. Selecciona Servicio (Con pestañas de categoría sin scroll-trap) */}
+                  {/* Barra visual de 3 pasos */}
+                  <div
+                    data-testid="booking-stepper"
+                    className="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl bg-[#141820] border border-[#252A36]"
+                  >
+                    {[
+                      { num: 1, label: '1. Servicio' },
+                      { num: 2, label: '2. Día y Hora' },
+                      { num: 3, label: '3. Confirmar' },
+                    ].map((st) => {
+                      const isActive = currentStep === st.num;
+                      const isDone = currentStep > st.num;
+                      return (
+                        <button
+                          key={st.num}
+                          type="button"
+                          data-testid={`booking-step-${st.num}`}
+                          onClick={() => {
+                            soundFx.playClick();
+                            setCurrentStep(st.num);
+                          }}
+                          className={`py-2.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer truncate ${
+                            isActive
+                              ? 'bg-[#10B981] text-[#07090C] shadow-sm'
+                              : isDone
+                              ? 'bg-[#10B981]/15 text-[#34D399] border border-[#10B981]/40'
+                              : 'bg-[#0A0C0F] text-[#9CA3AF]'
+                          }`}
+                        >
+                          {isDone ? `✓ ${st.label.split(' ')[1]}` : st.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* PASO 1: Selecciona Servicio */}
+                  {currentStep === 1 && (
                   <div className="p-4 rounded-xl bg-[#141820]/90 border border-[#252A36] space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF] flex items-center gap-1.5">
@@ -1421,8 +1496,25 @@ export default function PublicBookingView() {
                         );
                       })}
                     </div>
-                  </div>
 
+                    <button
+                      type="button"
+                      data-testid="booking-next-step"
+                      onClick={() => {
+                        soundFx.playClick();
+                        setCurrentStep(2);
+                      }}
+                      className="w-full py-3.5 px-4 min-h-[48px] rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-sm font-black uppercase flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                    >
+                      <span>Continuar · Elegir Día y Hora</span>
+                      <ArrowRight size={17} />
+                    </button>
+                  </div>
+                  )}
+
+                  {/* PASO 2: Barbero + Día y Hora */}
+                  {currentStep === 2 && (
+                  <div className="space-y-4">
                   {/* 2. Selecciona Barbero (Compacto si solo hay 1 barbero) */}
                   <div className="p-4 rounded-xl bg-[#141820]/90 border border-[#252A36]">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF] mb-3 flex items-center gap-1.5">
@@ -1596,6 +1688,48 @@ export default function PublicBookingView() {
                         )}
                       </div>
                     )}
+
+                    <div className="flex items-center gap-2.5 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundFx.playClick();
+                          setCurrentStep(1);
+                        }}
+                        className="py-3.5 px-4 min-h-[48px] rounded-xl bg-[#101318] border border-[#252A36] text-sm font-bold text-[#D1D5DB] flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <ArrowLeft size={16} />
+                        <span>Atrás</span>
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="booking-next-step"
+                        onClick={() => {
+                          soundFx.playClick();
+                          setCurrentStep(3);
+                        }}
+                        className="flex-1 py-3.5 px-4 min-h-[48px] rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-sm font-black uppercase flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                      >
+                        <span>Continuar ({selectedSlot || 'Elige hora'})</span>
+                        <ArrowRight size={17} />
+                      </button>
+                    </div>
+                  </div>
+                  </div>
+                  )}
+
+                  {/* PASO 3: Tus Datos, RGPD y Confirmar */}
+                  {currentStep === 3 && (
+                  <div className="space-y-4">
+                  <div className="p-3.5 rounded-xl bg-[#10B981]/12 border border-[#10B981]/40 flex items-center justify-between gap-2 text-sm">
+                    <span className="font-bold text-white truncate">{selectedService?.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(2)}
+                      className="font-mono font-bold text-[#34D399] underline shrink-0 cursor-pointer"
+                    >
+                      {selectedDate} · {selectedSlot}
+                    </button>
                   </div>
 
                   {/* 4. Datos del Cliente y Estilo */}
@@ -1673,18 +1807,33 @@ export default function PublicBookingView() {
 
                   {renderRgpdSection()}
 
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full py-3.5 px-4 min-h-[50px] rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-sm font-black uppercase tracking-wide flex items-center justify-center gap-2 shadow-[0_6px_25px_rgba(16,185,129,0.35)] cursor-pointer transition-all"
-                  >
-                    <span>
-                      {submitting
-                        ? 'Enviando reserva...'
-                        : `✓ Solicitar Cita (${selectedSlot})`}
-                    </span>
-                    <ArrowRight size={16} />
-                  </button>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundFx.playClick();
+                        setCurrentStep(2);
+                      }}
+                      className="py-3.5 px-4 min-h-[50px] rounded-xl bg-[#141820] border border-[#252A36] text-sm font-bold text-[#D1D5DB] flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ArrowLeft size={16} />
+                      <span>Atrás</span>
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 py-3.5 px-4 min-h-[50px] rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-sm font-black uppercase tracking-wide flex items-center justify-center gap-2 shadow-[0_6px_25px_rgba(16,185,129,0.35)] cursor-pointer transition-all"
+                    >
+                      <span>
+                        {submitting
+                          ? 'Enviando reserva...'
+                          : `✓ Confirmar (${selectedSlot})`}
+                      </span>
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                  </div>
+                  )}
                 </form>
               ) : (
                 /* ============================================================= */

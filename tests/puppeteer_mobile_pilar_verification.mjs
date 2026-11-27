@@ -122,7 +122,22 @@ async function runVerification() {
     });
     assert.strictEqual(storageDump.includes('"2023"'), false, 'Public localStorage must never contain barber PIN 2023');
 
-    // Block 1 RGPD check on /r/joseh-barber: 1st-layer box, 2 unchecked checkboxes, publicOnly Legal Modal (NO DPA tab)
+    // Verify Guided 3-Step Wizard on /r/joseh-barber: Step 1 (Services) -> Step 2 (Day/Time) -> Step 3 (RGPD & Confirm)
+    const step1Check = await pubPage.evaluate(() => ({
+      hasStepper: Boolean(document.querySelector('[data-testid="booking-stepper"]')),
+      scrollW: document.documentElement.scrollWidth,
+      innerW: window.innerWidth
+    }));
+    assert.strictEqual(step1Check.hasStepper, true, '3-step booking stepper must render on /r/joseh-barber');
+    assert.strictEqual(step1Check.scrollW <= step1Check.innerW, true, `/r/joseh-barber step 1 0px overflow (${step1Check.scrollW} <= ${step1Check.innerW})`);
+
+    // Step 1 -> Step 2 -> Step 3
+    await pubPage.evaluate(() => document.querySelector('[data-testid="booking-next-step"]')?.click());
+    await new Promise((r) => setTimeout(r, 150));
+    await pubPage.evaluate(() => document.querySelector('[data-testid="booking-next-step"]')?.click());
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Block 1 RGPD check on /r/joseh-barber Step 3: 1st-layer box, 2 unchecked checkboxes, publicOnly Legal Modal (NO DPA tab)
     const rgpdPubCheck = await pubPage.evaluate(() => {
       const section = document.querySelector('[data-testid="rgpd-booking-section"]');
       const boxes = section ? Array.from(section.querySelectorAll('input[type="checkbox"]')) : [];
@@ -135,9 +150,9 @@ async function runVerification() {
         innerW: window.innerWidth
       };
     });
-    assert.strictEqual(rgpdPubCheck.hasSection && rgpdPubCheck.hasArt13, true, 'RGPD 1st-layer Art. 13 box must render on /r/joseh-barber');
+    assert.strictEqual(rgpdPubCheck.hasSection && rgpdPubCheck.hasArt13, true, 'RGPD 1st-layer Art. 13 box must render on /r/joseh-barber Step 3');
     assert.strictEqual(rgpdPubCheck.allUnchecked, true, 'Both RGPD booking checkboxes must be unchecked by default');
-    assert.strictEqual(rgpdPubCheck.scrollW <= rgpdPubCheck.innerW, true, `/r/joseh-barber 0px overflow (${rgpdPubCheck.scrollW} <= ${rgpdPubCheck.innerW})`);
+    assert.strictEqual(rgpdPubCheck.scrollW <= rgpdPubCheck.innerW, true, `/r/joseh-barber Step 3 0px overflow (${rgpdPubCheck.scrollW} <= ${rgpdPubCheck.innerW})`);
 
     // Open public Legal Modal & verify DPA tab is HIDDEN on public route
     await pubPage.evaluate(() => {

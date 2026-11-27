@@ -13,9 +13,15 @@ import {
   MapPin,
   Smartphone,
   Sparkles,
+  MessageSquare,
+  Link2,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
-import { buildCustomerPortalUrl } from '../lib/shopUtils';
+import {
+  buildCustomerPortalUrl,
+  buildWhatsAppAutoReplyTemplate,
+  buildWhatsAppUrl,
+} from '../lib/shopUtils';
 import { soundFx } from '../lib/soundFx';
 
 /**
@@ -71,7 +77,9 @@ function generateDeterministicMatrix(text) {
 export default function QRPosterModal({ isOpen, onClose, onLockScreen }) {
   const { activeShop, activeShopSlug } = useShop();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('share'); // 'share' | 'qr'
   const [copied, setCopied] = useState(false);
+  const [copiedAutoReply, setCopiedAutoReply] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
 
   const origin =
@@ -91,6 +99,7 @@ export default function QRPosterModal({ isOpen, onClose, onLockScreen }) {
   const shopName = activeShop?.name || 'KUTZ // BARBER STUDIO';
   const shopAddress = activeShop?.address || 'Calle Mayor 14, Madrid';
   const shopPin = activeShop?.pin || '1234';
+  const waAutoReply = buildWhatsAppAutoReplyTemplate(shopName, portalUrl);
 
   const handleCopy = () => {
     soundFx.playClick();
@@ -99,6 +108,15 @@ export default function QRPosterModal({ isOpen, onClose, onLockScreen }) {
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleCopyAutoReply = () => {
+    soundFx.playClick();
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(waAutoReply).catch(() => {});
+    }
+    setCopiedAutoReply(true);
+    setTimeout(() => setCopiedAutoReply(false), 2500);
   };
 
   const handlePrint = () => {
@@ -118,17 +136,17 @@ export default function QRPosterModal({ isOpen, onClose, onLockScreen }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl bg-[#101318] border border-[#252A36] rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Cabecera */}
-        <div className="px-6 py-4 bg-[#141820] border-b border-[#252A36] flex items-center justify-between">
+        <div className="px-5 py-4 bg-[#141820] border-b border-[#252A36] flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-[#10B981]/15 border border-[#10B981]/40 text-[#10B981] flex items-center justify-center">
               <QrCode size={22} />
             </div>
             <div>
               <h2 className="text-lg font-serif font-black text-white uppercase tracking-tight">
-                Mi Cartel QR de Reservas
+                Cómo Reservan Mis Clientes
               </h2>
-              <p className="text-xs text-[#9CA3AF]">
-                Para el espejo, escaparate o biografía de Instagram
+              <p className="text-xs text-[#D1D5DB]">
+                Para que repitan desde casa sin volver a escanear el QR
               </p>
             </div>
           </div>
@@ -139,151 +157,231 @@ export default function QRPosterModal({ isOpen, onClose, onLockScreen }) {
               soundFx.playClick();
               onClose();
             }}
-            className="p-2 rounded-xl bg-[#1B202B] text-[#9CA3AF] hover:text-white cursor-pointer"
+            aria-label="Cerrar compartir reservas"
+            className="p-2 rounded-xl bg-[#1B202B] text-[#D1D5DB] hover:text-white cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
+        {/* Selector de 2 pestañas claras */}
+        <div className="p-2.5 bg-[#0A0C0F] border-b border-[#252A36] grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              soundFx.playClick();
+              setActiveTab('share');
+            }}
+            className={`py-2.5 px-3 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+              activeTab === 'share'
+                ? 'bg-[#10B981] text-[#07090C] shadow-md'
+                : 'bg-[#141820] text-[#D1D5DB]'
+            }`}
+          >
+            <Link2 size={15} />
+            <span>Sin QR (Recomendado)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              soundFx.playClick();
+              setActiveTab('qr');
+            }}
+            className={`py-2.5 px-3 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+              activeTab === 'qr'
+                ? 'bg-[#10B981] text-[#07090C] shadow-md'
+                : 'bg-[#141820] text-[#D1D5DB]'
+            }`}
+          >
+            <QrCode size={15} />
+            <span>Cartel QR Local</span>
+          </button>
+        </div>
+
         {/* Contenido */}
-        <div className="p-6 overflow-y-auto space-y-6">
-          {/* Vista previa del Cartel Imprimible */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-            {/* Tarjeta Póster */}
-            <div className="md:col-span-6 bg-gradient-to-b from-[#141820] to-[#0A0C0F] border-2 border-[#10B981]/60 rounded-2xl p-6 text-center shadow-[0_10px_35px_rgba(16,185,129,0.15)]">
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#10B981]/15 border border-[#10B981]/40 text-[#34D399] text-[11px] font-bold mb-3">
-                <Sparkles size={12} />
-                <span>RESERVA SIN ESPERAS</span>
-              </div>
-
-              <h3 className="text-xl font-serif font-black text-white uppercase leading-tight">
-                {shopName}
-              </h3>
-              <p className="text-[11px] text-[#9CA3AF] mt-1 flex items-center justify-center gap-1">
-                <MapPin size={11} className="text-[#10B981]" />
-                <span>{shopAddress}</span>
-              </p>
-
-              {/* Caja blanca del código QR */}
-              <div className="my-5 mx-auto w-48 h-48 bg-white p-3 rounded-2xl shadow-lg flex items-center justify-center">
-                {!imgFailed ? (
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=4&data=${encodeURIComponent(
-                      portalUrl
-                    )}`}
-                    alt={`QR ${shopName}`}
-                    className="w-full h-full object-contain"
-                    onError={() => setImgFailed(true)}
-                  />
-                ) : (
-                  <svg
-                    viewBox="0 0 21 21"
-                    className="w-full h-full"
-                    shapeRendering="crispEdges"
-                    aria-label={`QR ${shopName}`}
-                  >
-                    {qrMatrix.map((row, rIdx) =>
-                      row.map((cell, cIdx) =>
-                        cell ? (
-                          <rect
-                            key={`${rIdx}-${cIdx}`}
-                            x={cIdx}
-                            y={rIdx}
-                            width={1}
-                            height={1}
-                            fill="#07090C"
-                          />
-                        ) : null
-                      )
-                    )}
-                  </svg>
-                )}
-              </div>
-
-              <p className="text-xs font-extrabold text-white uppercase tracking-wider">
-                📱 Escanea con tu cámara
-              </p>
-              <p className="text-[11px] text-[#34D399] font-semibold mt-0.5">
-                Elige Día y Hora · O Coge Turno Hoy
-              </p>
-            </div>
-
-            {/* Instrucciones y Controles del Barbero */}
-            <div className="md:col-span-6 space-y-4">
-              <div className="p-4 rounded-xl bg-[#141820] border border-[#252A36] space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9CA3AF] block">
-                  Enlace directo para QR e Instagram:
-                </span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={portalUrl}
-                    className="w-full px-3 py-2 rounded-lg bg-[#0A0C0F] border border-[#252A36] text-xs font-mono text-[#34D399] focus:outline-none"
-                  />
+        <div className="p-5 overflow-y-auto space-y-5">
+          {activeTab === 'share' ? (
+            <div className="space-y-4">
+              {/* Ancla 1: Instagram y Google Maps */}
+              <div className="p-4 rounded-2xl bg-[#141820] border border-[#252A36] space-y-3">
+                <p className="text-sm font-bold text-white">
+                  1. Ponlo en tu Instagram y Google Maps (1 sola vez)
+                </p>
+                <p className="text-xs text-[#D1D5DB] leading-relaxed">
+                  Así cualquier cliente que te busque en Instagram o Google Maps toca el enlace y reserva solo sin escribirte.
+                </p>
+                <input
+                  type="text"
+                  readOnly
+                  value={portalUrl}
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#0A0C0F] border border-[#252A36] text-xs font-mono text-[#34D399] focus:outline-none"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
                     type="button"
                     onClick={handleCopy}
-                    className="px-3 py-2 rounded-lg bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                    className="py-3 px-4 rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-sm font-black flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
-                    <span>{copied ? 'Copiado' : 'Copiar'}</span>
+                    {copied ? <Check size={16} /> : <Copy size={16} />}
+                    <span>{copied ? '¡Enlace copiado!' : 'Copiar enlace'}</span>
                   </button>
+                  <a
+                    href={buildWhatsAppUrl('', waAutoReply)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-3 px-4 rounded-xl bg-[#1B202B] hover:bg-[#252A36] border border-[#10B981]/40 text-sm font-bold text-[#34D399] flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare size={16} />
+                    <span>Mandar por WhatsApp</span>
+                  </a>
                 </div>
               </div>
 
-              <div className="space-y-2.5">
+              {/* Ancla 2: Truco WhatsApp Business */}
+              <div className="p-4 rounded-2xl bg-[#0F241D] border border-[#10B981]/40 space-y-3">
+                <p className="text-sm font-bold text-[#34D399]">
+                  2. Truco estrella: Respuesta automática de WhatsApp Business
+                </p>
+                <p className="text-xs text-[#E5E7EB] leading-relaxed">
+                  Pega este texto en <strong className="text-white">WhatsApp Business → Mensaje de bienvenida</strong>. Cuando un cliente pregunte "¿tienes hueco?", WhatsApp le envía tu enlace automáticamente.
+                </p>
+                <div className="p-3 rounded-xl bg-[#0A0C0F] border border-[#252A36] text-xs text-white whitespace-pre-line leading-relaxed">
+                  {waAutoReply}
+                </div>
                 <button
                   type="button"
-                  onClick={handleOpenPreview}
-                  className="w-full py-3 px-4 rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-xs font-black uppercase flex items-center justify-center space-x-2 shadow-lg cursor-pointer transition-all"
+                  data-testid="copy-wa-autoreply-btn"
+                  onClick={handleCopyAutoReply}
+                  className="w-full py-3 px-4 rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-sm font-black flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Smartphone size={16} />
-                  <span>Probar Cómo Lo Ve El Cliente</span>
-                  <ExternalLink size={14} />
+                  {copiedAutoReply ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copiedAutoReply ? '¡Texto copiado! Pégalo en WhatsApp Business' : 'Copiar texto automático de WhatsApp'}</span>
                 </button>
+              </div>
 
+              <button
+                type="button"
+                onClick={handleOpenPreview}
+                className="w-full py-3 px-4 rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] text-white text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Smartphone size={16} className="text-[#10B981]" />
+                <span>Probar cómo reserva un cliente</span>
+                <ExternalLink size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              {/* Tarjeta Póster */}
+              <div className="md:col-span-6 bg-gradient-to-b from-[#141820] to-[#0A0C0F] border-2 border-[#10B981]/60 rounded-2xl p-6 text-center shadow-[0_10px_35px_rgba(16,185,129,0.15)]">
+                <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#10B981]/15 border border-[#10B981]/40 text-[#34D399] text-xs font-bold mb-3">
+                  <Sparkles size={12} />
+                  <span>RESERVA SIN ESPERAS</span>
+                </div>
+
+                <h3 className="text-xl font-serif font-black text-white uppercase leading-tight">
+                  {shopName}
+                </h3>
+                <p className="text-xs text-[#D1D5DB] mt-1 flex items-center justify-center gap-1">
+                  <MapPin size={12} className="text-[#10B981]" />
+                  <span>{shopAddress}</span>
+                </p>
+
+                {/* Caja blanca del código QR */}
+                <div className="my-5 mx-auto w-48 h-48 bg-white p-3 rounded-2xl shadow-lg flex items-center justify-center">
+                  {!imgFailed ? (
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=4&data=${encodeURIComponent(
+                        portalUrl
+                      )}`}
+                      alt={`QR ${shopName}`}
+                      className="w-full h-full object-contain"
+                      onError={() => setImgFailed(true)}
+                    />
+                  ) : (
+                    <svg
+                      viewBox="0 0 21 21"
+                      className="w-full h-full"
+                      shapeRendering="crispEdges"
+                      aria-label={`QR ${shopName}`}
+                    >
+                      {qrMatrix.map((row, rIdx) =>
+                        row.map((cell, cIdx) =>
+                          cell ? (
+                            <rect
+                              key={`${rIdx}-${cIdx}`}
+                              x={cIdx}
+                              y={rIdx}
+                              width={1}
+                              height={1}
+                              fill="#07090C"
+                            />
+                          ) : null
+                        )
+                      )}
+                    </svg>
+                  )}
+                </div>
+
+                <p className="text-sm font-extrabold text-white uppercase tracking-wider">
+                  📱 Escanea con tu cámara
+                </p>
+                <p className="text-xs text-[#34D399] font-semibold mt-0.5">
+                  Elige Día y Hora · O Coge Turno Hoy
+                </p>
+              </div>
+
+              {/* Controles de Impresión y PIN */}
+              <div className="md:col-span-6 space-y-4">
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] text-white text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#10B981] hover:bg-[#34D399] text-[#07090C] text-sm font-black flex items-center justify-center space-x-2 cursor-pointer transition-all"
                 >
-                  <Printer size={15} className="text-[#10B981]" />
+                  <Printer size={16} />
                   <span>Imprimir Cartel A4 para el Local</span>
                 </button>
-              </div>
 
-              {/* Seguridad PIN del Barbero */}
-              <div className="p-4 rounded-xl bg-[#0A0C0F] border border-[#252A36] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <ShieldAlert size={15} className="text-[#10B981]" />
-                    <span>PIN Privado del Barbero</span>
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-md bg-[#10B981]/15 border border-[#10B981]/40 font-mono text-xs font-black text-[#34D399]">
-                    {shopPin}
-                  </span>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="w-full py-3 px-4 rounded-xl bg-[#141820] hover:bg-[#1B202B] border border-[#252A36] text-white text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {copied ? <Check size={15} className="text-[#34D399]" /> : <Copy size={15} />}
+                  <span>{copied ? 'Enlace copiado' : 'Copiar enlace'}</span>
+                </button>
+
+                {/* Seguridad PIN del Barbero */}
+                <div className="p-4 rounded-xl bg-[#0A0C0F] border border-[#252A36] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                      <ShieldAlert size={16} className="text-[#10B981]" />
+                      <span>PIN Privado del Barbero</span>
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-md bg-[#10B981]/15 border border-[#10B981]/40 font-mono text-sm font-black text-[#34D399]">
+                      {shopPin}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#D1D5DB] leading-relaxed">
+                    El cliente jamás ve tus fichas ni recetas. Si dejas la tablet en el mostrador, bloquea el panel con tu PIN.
+                  </p>
+                  {onLockScreen && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundFx.playClick();
+                        onClose();
+                        onLockScreen();
+                      }}
+                      className="w-full py-2.5 px-3 rounded-lg bg-[#1B202B] hover:bg-[#252A36] border border-[#262C3A] text-xs font-bold text-[#FBBF24] flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Lock size={14} />
+                      <span>Bloquear Pantalla Ahora</span>
+                    </button>
+                  )}
                 </div>
-                <p className="text-[11px] text-[#9CA3AF] leading-relaxed">
-                  El cliente desde el QR jamás ve tus fichas ni recetas. Si dejas la tablet en el mostrador, puedes bloquear el panel con tu PIN.
-                </p>
-                {onLockScreen && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundFx.playClick();
-                      onClose();
-                      onLockScreen();
-                    }}
-                    className="w-full py-2 px-3 rounded-lg bg-[#1B202B] hover:bg-[#252A36] border border-[#262C3A] text-xs font-bold text-[#FBBF24] flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Lock size={13} />
-                    <span>Bloquear Pantalla del Barbero Ahora</span>
-                  </button>
-                )}
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

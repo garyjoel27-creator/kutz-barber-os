@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { X, Scissors, AlertCircle } from 'lucide-react';
+import { X, Scissors, AlertCircle, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { useClients } from '../context/ClientContext';
+
+const QUICK_CUT_PRESETS = [
+  'Skin Fade',
+  'Low Taper Fade',
+  'Corte Clásico',
+  'Corte + Barba',
+];
 
 const ClientModal = ({ isOpen, onClose, onSubmit }) => {
   const clientCtx = useClients();
@@ -13,6 +20,7 @@ const ClientModal = ({ isOpen, onClose, onSubmit }) => {
     allergies: '',
     notes: ''
   });
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   if (!isOpen) return null;
 
@@ -20,140 +28,180 @@ const ClientModal = ({ isOpen, onClose, onSubmit }) => {
     e.preventDefault();
     onSubmit(formData);
     setFormData({ name: '', phone: '', email: '', allergies: '', notes: '' });
+    setShowAdvanced(false);
   };
 
   return (
-    <div className="fixed inset-0 bg-[#090B0E]/80 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-300">
-      <div className="bg-[#161920] rounded-3xl border border-[#262B36] shadow-[0_25px_70px_rgba(0,0,0,0.75)] w-full max-w-lg overflow-hidden my-auto animate-in zoom-in-95 duration-200">
-        
-        {/* Header Modal */}
-        <div className="p-6 sm:p-7 border-b border-[#262B36] flex justify-between items-start bg-[#14171D]">
+    <div className="fixed inset-0 bg-[#090B0E]/80 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-[#161920] rounded-3xl border border-[#262B36] shadow-[0_25px_70px_rgba(0,0,0,0.75)] w-full max-w-lg overflow-hidden my-auto">
+        {/* Cabecera limpia */}
+        <div className="p-5 sm:p-6 border-b border-[#262B36] flex justify-between items-start bg-[#14171D]">
           <div>
-            <div className="inline-flex items-center space-x-1.5 text-[10px] font-mono font-bold tracking-[0.2em] uppercase text-[#10B981] mb-1">
-              <Scissors size={13} />
-              <span>NUEVA FICHA BARBER // CREW</span>
+            <div className="inline-flex items-center space-x-1.5 text-xs font-bold uppercase tracking-wider text-[#34D399] mb-1">
+              <Scissors size={14} />
+              <span>Nuevo Cliente en 3 Segundos</span>
             </div>
             <h2 className="text-2xl font-serif font-bold text-white tracking-tight">
-              Alta de Nuevo Cliente
+              Guardar Cliente
             </h2>
-            <p className="text-xs text-[#9CA3AF] mt-0.5">
-              Registra sus datos, morfología craneal, remolinos y sensibilidades al afeitado.
+            <p className="text-sm text-[#D1D5DB] mt-0.5">
+              Solo necesitas nombre y móvil. Los detalles son opcionales.
             </p>
           </div>
-          <button 
-            onClick={onClose} 
-            className="w-8 h-8 rounded-xl bg-[#1C2029] border border-[#262B36] text-[#9CA3AF] hover:text-white hover:border-[#10B981]/40 flex items-center justify-center transition-all cursor-pointer"
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="w-9 h-9 rounded-xl bg-[#1C2029] border border-[#262B36] text-[#D1D5DB] hover:text-white flex items-center justify-center cursor-pointer"
           >
-            <X size={17} />
+            <X size={18} />
           </button>
         </div>
-        
-        <form onSubmit={handleSubmit} className="p-6 sm:p-7 space-y-6">
-          {/* Datos de Contacto */}
+
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5">
+          {/* 2 campos esenciales grandes y claros */}
           <div className="space-y-4">
-            <h3 className="text-[11px] font-mono font-bold tracking-[0.2em] uppercase text-[#10B981]">
-              Datos del Cliente
-            </h3>
-            
             <div>
-              <label className="block text-xs font-medium text-[#D1D5DB] mb-1.5">
-                Nombre / Apodo <span className="text-[#10B981]">*</span>
+              <label className="block text-sm font-bold text-white mb-1.5">
+                1. Nombre o apodo <span className="text-[#34D399]">*</span>
               </label>
-              <input 
-                type="text" 
-                required 
-                value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value})} 
-                className="w-full px-4 py-3 bg-[#1C2029] border border-[#262B36] rounded-xl text-sm text-white placeholder-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all" 
-                placeholder="Ej. Marcos 'El Rulo' Mendoza" 
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-3 min-h-[48px] bg-[#1C2029] border border-[#262B36] rounded-xl text-base text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#10B981]"
+                placeholder="Ej. Carlos Pérez"
               />
             </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-xs font-medium text-[#D1D5DB] mb-1.5">Teléfono (WhatsApp)</label>
-                <input 
-                  type="tel" 
-                  value={formData.phone} 
-                  onChange={e => setFormData({...formData, phone: e.target.value})} 
-                  className="w-full px-4 py-3 bg-[#1C2029] border border-[#262B36] rounded-xl text-sm text-white placeholder-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all" 
-                  placeholder="+34 612 345 678" 
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[#D1D5DB] mb-1.5">Instagram / Email</label>
-                <input 
-                  type="text" 
-                  value={formData.email} 
-                  onChange={e => setFormData({...formData, email: e.target.value})} 
-                  className="w-full px-4 py-3 bg-[#1C2029] border border-[#262B36] rounded-xl text-sm text-white placeholder-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all" 
-                  placeholder="@marcos.kutz o email" 
-                />
+
+            <div>
+              <label className="block text-sm font-bold text-white mb-1.5">
+                2. Teléfono WhatsApp
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-4 py-3 min-h-[48px] bg-[#1C2029] border border-[#262B36] rounded-xl text-base text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#10B981]"
+                placeholder="Ej. 612 345 678"
+              />
+            </div>
+
+            {/* Pastillas rápidas de corte habitual (1 toque, sin escribir) */}
+            <div>
+              <span className="block text-xs font-bold text-[#D1D5DB] mb-2">
+                Corte habitual (opcional · 1 toque):
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_CUT_PRESETS.map((cut) => {
+                  const active = formData.notes === cut;
+                  return (
+                    <button
+                      key={cut}
+                      type="button"
+                      onClick={() =>
+                        setFormData({ ...formData, notes: active ? '' : cut })
+                      }
+                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        active
+                          ? 'bg-[#10B981] text-[#07090C] border-[#10B981]'
+                          : 'bg-[#1C2029] text-[#E5E7EB] border-[#262B36] hover:border-[#10B981]/60'
+                      }`}
+                    >
+                      {cut}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          <div className="border-t border-[#262B36] pt-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-mono font-bold tracking-[0.2em] uppercase text-[#10B981]">
-                Diagnóstico de Piel, Cráneo & Remolinos
-              </h3>
-              <span className="text-[10px] font-mono text-[#9CA3AF]">Notas de Sillón</span>
-            </div>
+          {/* Desplegable limpio para detalles opcionales */}
+          <button
+            type="button"
+            data-testid="toggle-client-details"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="w-full px-4 py-3 rounded-xl bg-[#14171D] hover:bg-[#1C2029] border border-[#262B36] text-sm font-bold text-[#D1D5DB] flex items-center justify-between cursor-pointer transition-all"
+          >
+            <span>
+              {showAdvanced
+                ? 'Ocultar detalles opcionales'
+                : '+ Añadir detalles opcionales (alergias, notas, Instagram)'}
+            </span>
+            {showAdvanced ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
 
-            <div>
-              <label className="block text-xs font-medium text-[#D1D5DB] mb-1.5 flex items-center justify-between">
-                <span>{activeModeConfig?.allergyLabel || 'Sensibilidad en Piel (Shaver, Navaja o Tinte)'}</span>
-                <span className="text-[10px] text-[#F59E0B] font-mono flex items-center">
-                  <AlertCircle size={11} className="mr-1" />
-                  Aviso al barbero
-                </span>
-              </label>
-              <textarea 
-                value={formData.allergies} 
-                onChange={e => setFormData({...formData, allergies: e.target.value})} 
-                className="w-full px-4 py-2.5 bg-[#1C2029] border border-[#262B36] rounded-xl text-sm text-white placeholder-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all h-20 resize-none" 
-                placeholder={activeModeConfig?.allergyPlaceholder || 'Ej. Piel sensible en cuello al pasar Shaver, foliculitis en nuca, usar bálsamo sin alcohol...'}
-              />
-            </div>
+          {showAdvanced && (
+            <div className="space-y-4 pt-1 border-t border-[#262B36]">
+              <div>
+                <label className="block text-sm font-semibold text-[#E5E7EB] mb-1.5">
+                  Instagram o Email
+                </label>
+                <input
+                  type="text"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-[#1C2029] border border-[#262B36] rounded-xl text-base text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#10B981]"
+                  placeholder="@usuario o correo"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-medium text-[#D1D5DB] mb-1.5">
-                {activeModeConfig?.notesLabel || 'Morfología Craneal, Remolinos & Producto de Styling'}
-              </label>
-              <textarea 
-                value={formData.notes} 
-                onChange={e => setFormData({...formData, notes: e.target.value})} 
-                className="w-full px-4 py-2.5 bg-[#1C2029] border border-[#262B36] rounded-xl text-sm text-white placeholder-[#6B7280] focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all h-20 resize-none" 
-                placeholder={activeModeConfig?.notesPlaceholder || 'Ej. Remolino fuerte en coronilla derecha. Usa Polvos Mate. Café solo con hielo...'}
-              />
-            </div>
-          </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#E5E7EB] mb-1.5 flex items-center justify-between">
+                  <span>{activeModeConfig?.allergyLabel || 'Piel sensible o alergias'}</span>
+                  <span className="text-xs text-[#F59E0B] font-bold flex items-center gap-1">
+                    <AlertCircle size={13} />
+                    Aviso
+                  </span>
+                </label>
+                <textarea
+                  value={formData.allergies}
+                  onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-[#1C2029] border border-[#262B36] rounded-xl text-base text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#10B981] h-20 resize-none"
+                  placeholder={activeModeConfig?.allergyPlaceholder || 'Ej. Piel sensible en cuello al pasar shaver...'}
+                />
+              </div>
 
-          {/* Información Básica RGPD - 1ª Capa */}
-          <div className="bg-[#14171D] border border-[#262B36] rounded-2xl p-3.5 text-[10px] text-[#9CA3AF] leading-relaxed">
-            <p className="font-mono font-bold uppercase tracking-wider text-[#34D399] mb-1">
-              Protección de Datos & Derechos de Imagen (RGPD // KUTZ BARBER OS)
+              <div>
+                <label className="block text-sm font-semibold text-[#E5E7EB] mb-1.5">
+                  {activeModeConfig?.notesLabel || 'Notas del corte (números, remolinos, producto)'}
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-[#1C2029] border border-[#262B36] rounded-xl text-base text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#10B981] h-20 resize-none"
+                  placeholder={activeModeConfig?.notesPlaceholder || 'Ej. Degradado al 0, remolino atrás derecha...'}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Información Básica RGPD - 1ª Capa legible */}
+          <div className="bg-[#14171D] border border-[#262B36] rounded-2xl p-3.5 text-xs text-[#D1D5DB] leading-relaxed">
+            <p className="font-bold text-[#34D399] mb-1">
+              Protección de Datos (RGPD)
             </p>
             <p>
-              <strong className="text-white">Responsable:</strong> KUTZ // BARBER STUDIO. <strong className="text-white">Finalidad:</strong> Gestión de ficha de corte, avisos de retoque por WhatsApp y autorización de imagen para Reels/TikTok. Tras crear la ficha, el cliente podrá firmar con el dedo en pantalla.
+              <strong className="text-white">Finalidad:</strong> Gestión de ficha de corte y avisos de retoque. Después podrás recoger su firma RGPD en pantalla.
             </p>
           </div>
 
           {/* Footer Acciones */}
-          <div className="pt-4 flex items-center justify-end space-x-3 border-t border-[#262B36]">
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="px-5 py-2.5 text-xs font-mono font-semibold text-[#9CA3AF] hover:text-white hover:bg-[#1C2029] rounded-xl transition-colors cursor-pointer"
+          <div className="pt-2 flex items-center justify-end space-x-3 border-t border-[#262B36]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-3 text-sm font-bold text-[#D1D5DB] hover:text-white hover:bg-[#1C2029] rounded-xl transition-colors cursor-pointer"
             >
               Cancelar
             </button>
-            <button 
-              type="submit" 
-              className="btn-author text-xs py-2.5 px-6 cursor-pointer"
+            <button
+              type="submit"
+              className="btn-author text-sm py-3 px-6 flex items-center gap-2 cursor-pointer"
             >
-              Crear Ficha de Cliente
+              <Check size={17} />
+              <span>Guardar Cliente</span>
             </button>
           </div>
         </form>

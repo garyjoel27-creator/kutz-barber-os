@@ -25,6 +25,8 @@ import {
 import {
   buildAppointmentIcsContent,
   buildCustomerPortalUrl,
+  buildSalonVCardContent,
+  buildWhatsAppAutoReplyTemplate,
   clearPublicClientProfile,
   loadSavedPublicClientProfile,
   savePublicClientProfile,
@@ -354,9 +356,24 @@ export function registerBlock1LegalSecurityTests(runner) {
       const bento = fs.readFileSync(path.join(rootDir, 'src/components/ClientBentoCard.jsx'), 'utf8');
       expect(pub.includes('repeat-booking-kit')).toBe(true);
       expect(pub.includes('download-ics-btn')).toBe(true);
+      expect(pub.includes('download-vcard-btn')).toBe(true);
+      expect(pub.includes('booking-stepper')).toBe(true);
       expect(pub.includes('returning-client-banner')).toBe(true);
       expect(dash.includes('buildCustomerPortalUrl')).toBe(true);
       expect(bento.includes('buildCustomerPortalUrl')).toBe(true);
+
+      const vcard = buildSalonVCardContent({
+        name: 'CM Salón D’ Campodónico',
+        phone: '689 014 014',
+        address: 'Arrecife, Lanzarote',
+        bookingUrl: portalUrl,
+      });
+      expect(vcard.includes('BEGIN:VCARD')).toBe(true);
+      expect(vcard.includes(`URL:${portalUrl}`)).toBe(true);
+      expect(vcard.includes('END:VCARD')).toBe(true);
+
+      const autoReply = buildWhatsAppAutoReplyTemplate('CM Salón', portalUrl);
+      expect(autoReply.includes(portalUrl)).toBe(true);
     });
   });
 }

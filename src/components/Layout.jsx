@@ -15,6 +15,9 @@ import {
   QrCode,
   Lock,
   Scale,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
 } from 'lucide-react';
 import AIAssistantModal from './AIAssistantModal';
 import WalkInKioskModal from './WalkInKioskModal';
@@ -92,6 +95,7 @@ const Layout = () => {
   const [isQRPosterOpen, setIsQRPosterOpen] = useState(false);
   const [isPinLocked, setIsPinLocked] = useState(false);
   const [isLegalOpen, setIsLegalOpen] = useState(false);
+  const [showMoreTools, setShowMoreTools] = useState(false);
   const [walkInOpen, setWalkInOpen] = useState(true);
   const [wallpaperIdx, setWallpaperIdx] = useState(() => {
     try {
@@ -324,103 +328,115 @@ const Layout = () => {
               );
             })}
 
-            <div className="pt-4">
-              <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
-                Herramientas del Salón
-              </p>
+            <div className="pt-3 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  soundFx.playClick();
+                  setIsQRPosterOpen(true);
+                }}
+                className={`w-full px-3.5 py-3.5 rounded-xl ${
+                  isFemale
+                    ? 'bg-[#EC4899]/15 hover:bg-[#EC4899]/25 border border-[#EC4899]/50'
+                    : 'bg-[#10B981]/15 hover:bg-[#10B981]/25 border border-[#10B981]/50'
+                } flex items-center space-x-3 text-left transition-all cursor-pointer group`}
+              >
+                <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899] text-white' : 'bg-[#10B981] text-[#07090C]'} flex items-center justify-center shrink-0`}>
+                  <QrCode size={18} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-white block leading-tight">Compartir Reservas</span>
+                  <span className={`text-xs ${accentLightText} block truncate`}>WhatsApp, Instagram y QR</span>
+                </div>
+              </button>
 
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundFx.playClick();
-                    setIsKioskOpen(true);
-                  }}
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer group"
-                >
-                  <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F472B6]' : 'bg-[#10B981]/15 text-[#10B981]'} flex items-center justify-center shrink-0`}>
-                    <Tv size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-sm font-bold text-white block leading-tight">Pantalla TV</span>
-                    <span className="text-[11px] text-[#9CA3AF] block truncate">Turnos en sala de espera</span>
-                  </div>
-                </button>
+              <button
+                type="button"
+                data-testid="toggle-more-tools"
+                onClick={() => {
+                  soundFx.playClick();
+                  setShowMoreTools((v) => !v);
+                }}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#141820]/90 hover:bg-[#1B202B] border border-[#252A36] flex items-center justify-between text-left transition-all cursor-pointer text-xs font-bold text-[#D1D5DB]"
+              >
+                <span className="flex items-center gap-2">
+                  <SlidersHorizontal size={15} className="text-[#10B981]" />
+                  <span>Más herramientas</span>
+                </span>
+                {showMoreTools ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundFx.playClick();
-                    setIsNoShowOpen(true);
-                  }}
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#F59E0B]/60 flex items-center space-x-3 text-left transition-all cursor-pointer group"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-[#F59E0B]/15 text-[#F59E0B] flex items-center justify-center shrink-0">
-                    <Zap size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-sm font-bold text-white block leading-tight">Rellenar Huecos</span>
-                    <span className="text-[11px] text-[#9CA3AF] block truncate">Avisar si alguien cancela</span>
-                  </div>
-                </button>
+              {showMoreTools && (
+                <div className="space-y-2 pl-1 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundFx.playClick();
+                      setIsKioskOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer"
+                  >
+                    <div className={`w-8 h-8 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F472B6]' : 'bg-[#10B981]/15 text-[#10B981]'} flex items-center justify-center shrink-0`}>
+                      <Tv size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-sm font-bold text-white block leading-tight">Pantalla TV</span>
+                      <span className="text-xs text-[#9CA3AF] block truncate">Turnos en sala</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundFx.playClick();
-                    setIsReelOpen(true);
-                  }}
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer group"
-                >
-                  <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F9A8D4]' : 'bg-[#10B981]/15 text-[#34D399]'} flex items-center justify-center shrink-0`}>
-                    <Film size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-sm font-bold text-white block leading-tight">Crear Reel 9:16</span>
-                    <span className="text-[11px] text-[#9CA3AF] block truncate">Antes y después para redes</span>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundFx.playClick();
+                      setIsNoShowOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#F59E0B]/60 flex items-center space-x-3 text-left transition-all cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[#F59E0B]/15 text-[#F59E0B] flex items-center justify-center shrink-0">
+                      <Zap size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-sm font-bold text-white block leading-tight">Rellenar Huecos</span>
+                      <span className="text-xs text-[#9CA3AF] block truncate">Avisar si cancelan</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundFx.playClick();
-                    setIsAIOpen(true);
-                  }}
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer group"
-                >
-                  <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F472B6]' : 'bg-[#10B981]/15 text-[#10B981]'} flex items-center justify-center shrink-0`}>
-                    <Sparkles size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-sm font-bold text-white block leading-tight">Asistente Rápido</span>
-                    <span className="text-[11px] text-[#9CA3AF] block truncate">
-                      {isFemale ? 'Preguntar sobre clientas' : 'Preguntar sobre clientes'}
-                    </span>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundFx.playClick();
+                      setIsReelOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer"
+                  >
+                    <div className={`w-8 h-8 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F9A8D4]' : 'bg-[#10B981]/15 text-[#34D399]'} flex items-center justify-center shrink-0`}>
+                      <Film size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-sm font-bold text-white block leading-tight">Crear Reel 9:16</span>
+                      <span className="text-xs text-[#9CA3AF] block truncate">Antes y después</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundFx.playClick();
-                    setIsQRPosterOpen(true);
-                  }}
-                  className={`w-full px-3.5 py-3 rounded-xl ${
-                    isFemale
-                      ? 'bg-[#EC4899]/15 hover:bg-[#EC4899]/25 border border-[#EC4899]/50'
-                      : 'bg-[#10B981]/15 hover:bg-[#10B981]/25 border border-[#10B981]/50'
-                  } flex items-center space-x-3 text-left transition-all cursor-pointer group`}
-                >
-                  <div className={`w-9 h-9 rounded-lg ${isFemale ? 'bg-[#EC4899] text-white' : 'bg-[#10B981] text-[#07090C]'} flex items-center justify-center shrink-0`}>
-                    <QrCode size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-sm font-bold text-white block leading-tight">Mi Cartel QR</span>
-                    <span className={`text-[11px] ${accentLightText} block truncate`}>Reservas desde el móvil</span>
-                  </div>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundFx.playClick();
+                      setIsAIOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer"
+                  >
+                    <div className={`w-8 h-8 rounded-lg ${isFemale ? 'bg-[#EC4899]/15 text-[#F472B6]' : 'bg-[#10B981]/15 text-[#10B981]'} flex items-center justify-center shrink-0`}>
+                      <Sparkles size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-sm font-bold text-white block leading-tight">Asistente Rápido</span>
+                      <span className="text-xs text-[#9CA3AF] block truncate">Consultas rápidas</span>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           </nav>
         </div>
