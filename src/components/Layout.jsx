@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
+  Palette,
 } from 'lucide-react';
 import AIAssistantModal from './AIAssistantModal';
 import WalkInKioskModal from './WalkInKioskModal';
@@ -27,6 +28,7 @@ import CommandPalette from './CommandPalette';
 import SuperAdminModal from './SuperAdminModal';
 import QRPosterModal, { BarberPinLockModal } from './QRPosterModal';
 import LegalComplianceModal from './LegalComplianceModal';
+import ThemePickerModal from './ThemePickerModal';
 import { useClients } from '../context/ClientContext';
 import { useShop } from '../context/ShopContext';
 import { getShopVertical, isFemaleVertical } from '../lib/shopUtils';
@@ -95,6 +97,7 @@ const Layout = () => {
   const [isQRPosterOpen, setIsQRPosterOpen] = useState(false);
   const [isPinLocked, setIsPinLocked] = useState(false);
   const [isLegalOpen, setIsLegalOpen] = useState(false);
+  const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [showMoreTools, setShowMoreTools] = useState(false);
   const [walkInOpen, setWalkInOpen] = useState(true);
   const [wallpaperIdx, setWallpaperIdx] = useState(() => {
@@ -370,6 +373,24 @@ const Layout = () => {
                 <div className="space-y-2 pl-1 pt-1">
                   <button
                     type="button"
+                    data-testid="open-theme-picker"
+                    onClick={() => {
+                      soundFx.playClick();
+                      setIsThemeOpen(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#141820]/80 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/60 flex items-center space-x-3 text-left transition-all cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[#10B981]/15 text-[#10B981] flex items-center justify-center shrink-0">
+                      <Palette size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-sm font-bold text-white block leading-tight">Estilo y Colores</span>
+                      <span className="text-xs text-[#9CA3AF] block truncate">5 estilos y modo claro</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => {
                       soundFx.playClick();
                       setIsKioskOpen(true);
@@ -584,13 +605,27 @@ const Layout = () => {
 
             <button
               type="button"
-              onClick={handleCycleWallpaper}
+              onClick={() => {
+                soundFx.playClick();
+                setIsThemeOpen(true);
+              }}
               className="p-2 sm:px-3 sm:py-2 min-h-[40px] min-w-[38px] rounded-xl bg-[#141820]/90 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/50 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-all cursor-pointer shrink-0"
+              title="Cambiar estilo y colores"
+              aria-label="Cambiar estilo y colores"
+            >
+              <Palette size={15} className={accentText} />
+              <span className="hidden sm:inline">Estilo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCycleWallpaper}
+              className="hidden sm:flex p-2 sm:px-3 sm:py-2 min-h-[40px] min-w-[38px] rounded-xl bg-[#141820]/90 hover:bg-[#1B202B] border border-[#252A36] hover:border-[#10B981]/50 text-xs font-bold text-white items-center justify-center space-x-1.5 transition-all cursor-pointer shrink-0"
               title="Cambiar foto de fondo del salón"
               aria-label="Cambiar fondo"
             >
               <ImageIcon size={15} className={accentText} />
-              <span className="hidden sm:inline">Fondo: {currentWallpaper.name}</span>
+              <span className="hidden lg:inline">Fondo: {currentWallpaper.name}</span>
             </button>
 
             <button
@@ -730,6 +765,11 @@ const Layout = () => {
         shop={activeShop}
         shopSlug={activeShopSlug}
         publicOnly={false}
+      />
+
+      <ThemePickerModal
+        isOpen={isThemeOpen}
+        onClose={() => setIsThemeOpen(false)}
       />
 
       <BarberPinLockModal

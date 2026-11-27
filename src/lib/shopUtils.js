@@ -616,6 +616,51 @@ export function buildWhatsAppAutoReplyTemplate(shopName = 'nuestra barbería', p
   return `¡Hola! 💈 Gracias por escribir a ${shopName}.\nPara ver huecos libres y reservar cita en 10 segundos sin esperar, toca aquí 👉 ${portalUrl}`;
 }
 
+export const BARBER_THEMES = [
+  {
+    id: 'urban-emerald',
+    name: 'Esmeralda Urbano',
+    tagline: 'Estilo streetwear nocturno (Por defecto)',
+    mode: 'dark',
+    swatches: ['#0A0C0F', '#10B981', '#34D399'],
+  },
+  {
+    id: 'vintage-gold',
+    name: 'Oro Clásico & Cuero',
+    tagline: 'Barbería gentleman elegante en oro viejo',
+    mode: 'dark',
+    swatches: ['#0E0C0A', '#D4AF37', '#E8CD87'],
+  },
+  {
+    id: 'cobalt-steel',
+    name: 'Azul Cobalto & Acero',
+    tagline: 'Estudio ejecutivo limpio y moderno',
+    mode: 'dark',
+    swatches: ['#090E17', '#38BDF8', '#0EA5E9'],
+  },
+  {
+    id: 'crimson-blade',
+    name: 'Rubí & Navaja',
+    tagline: 'Alto impacto urbano en rojo carmesí',
+    mode: 'dark',
+    swatches: ['#100A0C', '#F43F5E', '#FB7185'],
+  },
+  {
+    id: 'ivory-minimal',
+    name: 'Blanco Mármol Minimal',
+    tagline: 'Modo claro luminoso estilo nórdico',
+    mode: 'light',
+    swatches: ['#F6F4F0', '#18181B', '#B68B4C'],
+  },
+];
+
+export const DEFAULT_BARBER_THEME_ID = 'urban-emerald';
+
+export function normalizeBarberThemeId(themeId) {
+  const clean = String(themeId || '').trim().toLowerCase();
+  return BARBER_THEMES.some((t) => t.id === clean) ? clean : DEFAULT_BARBER_THEME_ID;
+}
+
 /**
  * Constructs barber hub management URL with tenant query parameter
  */

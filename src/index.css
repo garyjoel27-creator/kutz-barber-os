@@ -331,5 +331,136 @@
   border-left: 4px solid #EC4899;
 }
 
+/* ========================================================================= */
+/* KUTZ MULTI-THEME ENGINE (Oro Clásico, Cobalto, Rubí, Blanco Mármol)       */
+/* ========================================================================= */
+
+/* 1. Oro Clásico & Cuero */
+html[data-theme="vintage-gold"] body,
+html[data-theme="vintage-gold"] .bg-\[\#0A0C0F\] {
+  background-color: #0E0C0A !important;
+}
+html[data-theme="vintage-gold"] .bg-\[\#10B981\],
+html[data-theme="vintage-gold"] .btn-author {
+  background-color: #D4AF37 !important;
+  color: #110E0A !important;
+  border-color: #E8CD87 !important;
+}
+html[data-theme="vintage-gold"] .text-\[\#10B981\],
+html[data-theme="vintage-gold"] .text-\[\#34D399\] {
+  color: #E8CD87 !important;
+}
+html[data-theme="vintage-gold"] .border-\[\#10B981\],
+html[data-theme="vintage-gold"] .border-\[\#10B981\]\/40,
+html[data-theme="vintage-gold"] .border-\[\#10B981\]\/50 {
+  border-color: rgba(212, 175, 55, 0.55) !important;
+}
+html[data-theme="vintage-gold"] .bg-\[\#10B981\]\/15,
+html[data-theme="vintage-gold"] .bg-\[\#10B981\]\/12 {
+  background-color: rgba(212, 175, 55, 0.16) !important;
+}
+
+/* 2. Azul Cobalto & Acero */
+html[data-theme="cobalt-steel"] body,
+html[data-theme="cobalt-steel"] .bg-\[\#0A0C0F\] {
+  background-color: #090E17 !important;
+}
+html[data-theme="cobalt-steel"] .bg-\[\#10B981\],
+html[data-theme="cobalt-steel"] .btn-author {
+  background-color: #38BDF8 !important;
+  color: #07101A !important;
+  border-color: #7DD3FC !important;
+}
+html[data-theme="cobalt-steel"] .text-\[\#10B981\],
+html[data-theme="cobalt-steel"] .text-\[\#34D399\] {
+  color: #7DD3FC !important;
+}
+html[data-theme="cobalt-steel"] .border-\[\#10B981\],
+html[data-theme="cobalt-steel"] .border-\[\#10B981\]\/40,
+html[data-theme="cobalt-steel"] .border-\[\#10B981\]\/50 {
+  border-color: rgba(56, 189, 248, 0.55) !important;
+}
+html[data-theme="cobalt-steel"] .bg-\[\#10B981\]\/15,
+html[data-theme="cobalt-steel"] .bg-\[\#10B981\]\/12 {
+  background-color: rgba(56, 189, 248, 0.16) !important;
+}
+
+/* 3. Rubí & Navaja */
+html[data-theme="crimson-blade"] body,
+html[data-theme="crimson-blade"] .bg-\[\#0A0C0F\] {
+  background-color: #100A0C !important;
+}
+html[data-theme="crimson-blade"] .bg-\[\#10B981\],
+html[data-theme="crimson-blade"] .btn-author {
+  background-color: #F43F5E !important;
+  color: #FFFFFF !important;
+  border-color: #FB7185 !important;
+}
+html[data-theme="crimson-blade"] .text-\[\#10B981\],
+html[data-theme="crimson-blade"] .text-\[\#34D399\] {
+  color: #FDA4AF !important;
+}
+html[data-theme="crimson-blade"] .border-\[\#10B981\],
+html[data-theme="crimson-blade"] .border-\[\#10B981\]\/40,
+html[data-theme="crimson-blade"] .border-\[\#10B981\]\/50 {
+  border-color: rgba(244, 63, 94, 0.55) !important;
+}
+html[data-theme="crimson-blade"] .bg-\[\#10B981\]\/15,
+html[data-theme="crimson-blade"] .bg-\[\#10B981\]\/12 {
+  background-color: rgba(244, 63, 94, 0.16) !important;
+}
+
+/* 4. Blanco Mármol Minimal (Modo Claro Luminoso) */
+html[data-theme="ivory-minimal"] body,
+html[data-theme="ivory-minimal"] .bg-\[\#0A0C0F\],
+html[data-theme="ivory-minimal"] .bg-\[\#0E1117\] {
+  background-color: #F6F4F0 !important;
+  color: #18181B !important;
+}
+html[data-theme="ivory-minimal"] .bg-\[\#101318\],
+html[data-theme="ivory-minimal"] .bg-\[\#141820\],
+html[data-theme="ivory-minimal"] .bg-\[\#141820\]\/90,
+html[data-theme="ivory-minimal"] .bg-\[\#141820\]\/80,
+html[data-theme="ivory-minimal"] .bg-\[\#161920\],
+html[data-theme="ivory-minimal"] .bg-\[\#1C2029\],
+html[data-theme="ivory-minimal"] .bg-\[\#1B202B\],
+html[data-theme="ivory-minimal"] .luxury-card,
+html[data-theme="ivory-minimal"] .glass-panel {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  border-color: #DFD8CE !important;
+  color: #18181B !important;
+  box-shadow: 0 8px 24px -10px rgba(24, 24, 27, 0.12) !important;
+}
+html[data-theme="ivory-minimal"] .text-white,
+html[data-theme="ivory-minimal"] .text-\[\#F3F4F6\],
+html[data-theme="ivory-minimal"] .text-\[\#E5E7EB\] {
+  color: #18181B !important;
+}
+html[data-theme="ivory-minimal"] .text-\[\#D1D5DB\],
+html[data-theme="ivory-minimal"] .text-\[\#9CA3AF\] {
+  color: #52525B !important;
+}
+html[data-theme="ivory-minimal"] .bg-\[\#10B981\],
+html[data-theme="ivory-minimal"] .btn-author {
+  background-color: #18181B !important;
+  color: #FFFFFF !important;
+  border-color: #18181B !important;
+}
+html[data-theme="ivory-minimal"] .text-\[\#10B981\],
+html[data-theme="ivory-minimal"] .text-\[\#34D399\] {
+  color: #9A6E24 !important;
+}
+html[data-theme="ivory-minimal"] .border-\[\#252A36\],
+html[data-theme="ivory-minimal"] .border-\[\#262B36\] {
+  border-color: #DFD8CE !important;
+}
+html[data-theme="ivory-minimal"] input,
+html[data-theme="ivory-minimal"] select,
+html[data-theme="ivory-minimal"] textarea {
+  background-color: #FAF9F6 !important;
+  color: #18181B !important;
+  border-color: #D4CCC0 !important;
+}
+
 
 

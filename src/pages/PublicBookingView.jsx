@@ -33,6 +33,7 @@ import {
   downloadAppointmentIcs,
   downloadSalonVCard,
   loadSavedPublicClientProfile,
+  normalizeBarberThemeId,
   normalizeShopSlug,
   savePublicClientProfile,
   getShopLocalDateTime,
@@ -378,6 +379,13 @@ export default function PublicBookingView() {
     if (profile?.clientName) setClientName(profile.clientName);
     if (profile?.clientPhone) setClientPhone(profile.clientPhone);
   }, [activeShopSlug]);
+
+  useEffect(() => {
+    const remoteTheme = publicShop?.themeId || activeShop?.themeId;
+    if (remoteTheme && typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', normalizeBarberThemeId(remoteTheme));
+    }
+  }, [publicShop?.themeId, activeShop?.themeId]);
 
   useEffect(() => {
     const onBeforeInstall = (e) => {

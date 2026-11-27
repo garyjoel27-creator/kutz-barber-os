@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef,
 import { useLocation } from 'react-router-dom';
 import {
   DEFAULT_SHOP_SLUG,
+  DEFAULT_BARBER_THEME_ID,
+  normalizeBarberThemeId,
   DEFAULT_SHOP_CONFIG,
   SHOP_REX_CONFIG,
   SHOP_JOSEH_CONFIG,
@@ -14,6 +16,7 @@ import {
 } from '../lib/shopUtils';
 import {
   SyncEngine,
+  dispatchBarberAction,
   fetchAdminShops,
   provisionShop,
   updateShopStatus as apiUpdateShopStatus,
@@ -553,6 +556,48 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     return null;
   }, []);
 
+  const activeThemeId = useMemo(() => {
+    if (activeShop?.themeId) return normalizeBarberThemeId(activeShop.themeId);
+    try {
+      const saved = storage.getItem(`kutz_${activeShopSlug}_theme`);
+      if (saved) return normalizeBarberThemeId(saved);
+    } catch {
+      // ignore
+    }
+    return DEFAULT_BARBER_THEME_ID;
+  }, [activeShop?.themeId, activeShopSlug, storage]);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', activeThemeId);
+    }
+  }, [activeThemeId]);
+
+  const setShopTheme = useCallback(
+    (nextThemeId) => {
+      const cleanTheme = normalizeBarberThemeId(nextThemeId);
+      setActiveShop((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev, themeId: cleanTheme };
+        try {
+          storage.setItem(`kutz_${activeShopSlug}_config`, JSON.stringify(updated));
+          storage.setItem(`kutz_${activeShopSlug}_theme`, cleanTheme);
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', cleanTheme);
+      }
+      if (!isPublicRoute && typeof dispatchBarberAction === 'function') {
+        dispatchBarberAction(activeShopSlug, 'update_shop_schedule', { themeId: cleanTheme }, resolvedPin, customFetch, storage);
+      }
+      return cleanTheme;
+    },
+    [activeShopSlug, resolvedPin, isPublicRoute, storage, customFetch]
+  );
+
   const value = useMemo(() => ({
     activeShopSlug,
     activeShop,
@@ -576,7 +621,9 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     closeSuperAdmin,
     setIsSuperAdminOpen,
     verifyAndUnlockShopPin,
-    forceSyncNow
+    forceSyncNow,
+    activeThemeId,
+    setShopTheme
   }), [
     activeShopSlug,
     activeShop,
@@ -599,7 +646,9 @@ export function ShopProvider({ children, initialSlug = null, customStorage = nul
     openSuperAdmin,
     closeSuperAdmin,
     verifyAndUnlockShopPin,
-    forceSyncNow
+    forceSyncNow,
+    activeThemeId,
+    setShopTheme
   ]);
 
   return (

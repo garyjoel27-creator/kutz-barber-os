@@ -23,6 +23,8 @@ import {
   flushOutbox,
 } from '../src/lib/syncService.js';
 import {
+  BARBER_THEMES,
+  normalizeBarberThemeId,
   buildAppointmentIcsContent,
   buildCustomerPortalUrl,
   buildSalonVCardContent,
@@ -374,6 +376,15 @@ export function registerBlock1LegalSecurityTests(runner) {
 
       const autoReply = buildWhatsAppAutoReplyTemplate('CM Salón', portalUrl);
       expect(autoReply.includes(portalUrl)).toBe(true);
+
+      // Multi-Theme Engine verification
+      expect(BARBER_THEMES.length).toBe(5);
+      expect(normalizeBarberThemeId('vintage-gold')).toBe('vintage-gold');
+      expect(normalizeBarberThemeId('ivory-minimal')).toBe('ivory-minimal');
+      expect(normalizeBarberThemeId('invalid')).toBe('urban-emerald');
+      const css = fs.readFileSync(path.join(rootDir, 'src/index.css'), 'utf8');
+      expect(css.includes('html[data-theme="vintage-gold"]')).toBe(true);
+      expect(css.includes('html[data-theme="ivory-minimal"]')).toBe(true);
     });
   });
 }
